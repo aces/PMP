@@ -1,0 +1,70 @@
+=head1 NAME
+
+PMParray - convenience functions for controlling multiple PMP pipes.
+
+=head1 SYNOPSIS
+
+See the synopsis in the PMP documentation for an illustration of how
+to use PMParray.
+
+=head1 DESCRIPTION
+
+PMParray contains a series of convenience functions for dealing with
+multiple pipelines. The definition of a pipeline in the PMP context
+relates to all the stages for an individual subject. In most cases,
+however, a program will execute all stages for multiple
+subjects. This is where PMParray comes in, as it provides facilities
+for doing just that.
+
+=head1 OVERVIEW
+
+The basic usage of PMParray is the following: PMParray is initialized
+with a call to PMParray->new(). Then the individual PMP pipelines are
+created. Once each pipeline is created it is added to PMParray with
+the PMParray->addPipe method. Then PMParray is used to call the same
+method on all its component pipelines - such as running them all to
+completion.
+
+=head1 METHODS
+
+=head2 new
+
+Initialises the pipeline - has to be the first method called.
+
+=head2 addPipe
+
+Takes a PMP object as its argument and adds it to the PMParray.
+
+=head2 run
+
+Runs all the pipelines that have been added until nothing is left to
+be done in any of them.
+
+=head2 updateFromFiles
+
+Sets the status of all stages in all pipelines based on their inputs
+and outputs. In other words, calls the PMP method statusFromFiles on
+all pipelines.
+
+=head2 printUnfinished
+
+Prints the unfinished stages for each pipeline.
+
+=head2 resetFromStage
+
+Takes a stage name as an argument, and resets all stages from that
+one onwards in each pipeline (uses a method of the same name in PMP).
+
+=head2 resetAll
+
+Resets all stages in all pipelines.
+
+=head2 printStages
+
+Prints the stages of the first pipeline in the array (i.e. it assumes
+that this information will be the same for all pipelines).
+
+=head2 sleepTime
+
+Gets or sets the number of seconds to sleep between pipeline
+executions.

@@ -4,44 +4,168 @@ PMP - Poor Man's Pipeline; programmatic pipeline control
 
 =head1 SYNOPSIS
 
+Below is a full example of an application using PMP. It is modelled
+on INSECT, which segments an MRI volume into white matter, grey
+matter, and spinal fluid
+
+    use strict;
+    use PMPpbs;
+    use PMParray;
     use PMP;
+    use MNI::Startup;
+    use MNI::PathUtilities qw(split_path);
+    use MNI::FileUtilities qw(check_output_dirs check_output_path);
+    use MNI::DataDir;
+    use Getopt::Tabular;
 
-    my $file1 = "one.tmp";
-    my $file2 = "two.tmp";
-    my $file3 = "three.tmp";
-    my $file4 = "four.tmp";
+    # globals
+    my $clsDir = MNI::DataDir::dir("ICBM");
+    my $model = "$clsDir/icbm_template_1.00mm.mnc";
 
-    my $test = PMP->new();
-    $test->name("test-pipeline");
-    $test->statusDir("/data/novartis3/temp/jason/sandbox/libraries/PMP");
+    # arguments and their defaults
+    my $usePBS = undef;
+    my $pbsQueue = "long";
+    my $pbsHosts = "yorick:bullcalf";
+    my $command = "printStatus";
+    my $reset = undef;
+    my $sleepTime = 10;
 
-    $test->addStage( 
-	{ name => "stage2",
-	  inputs => [$file3],
-	  outputs => [$file4],
-	  prereqs => ["test-stage"],
-	  args => ["touch", $file4]
-	} );
-    $test->addStage( 
-	{ name => "test-stage",
-	  inputs => [$file1, $file2],
-	  outputs => [$file3],
-	  args => ["touch", $file3] 
-	} );
+    my @leftOverArgs;
 
+    # argument handling
+    my @argTbl = (
+	["Pipeline options", "section"],
+	["-pbs", "boolean", undef, \$usePBS,
+	 "Use PBS for job submission."],
+	["-queue", "string", 1, \$pbsQueue,
+	 "Which PBS queue to use [short|medium|long]."],
+	["-hosts", "string", 1, \$pbsHosts,
+	 "Colon separated list of pbs hosts"],
+	["-sleep-time", "integer", 1, \$sleepTime,
+	 "Set the sleep time."],
+	["Pipeline control", "section"],
+	["-run", "const", "run", \$command,
+	 "Run the pipeline."],
+	["-status-from-files", "const", "statusFromFiles", \$command,
+	 "Compute pipeline status from files"],
+	["-print-stages", "const", "printStages", \$command,
+	 "Print the pipeline stages."],
+	["-print-status", "const", "printStatus", \$command,
+	 "Print the status of each pipeline."],
+	["Stage Control", "section"],
+	["-reset-all", "const", "resetAll", \$reset,
+	 "Start the pipeline from the beginning."],
+	["-reset-from", "string", 1, \$reset,
+	 "Restart from the specified stage."]
+    );
+    GetOptions(\@argTbl, \@ARGV, \@leftOverArgs) or die "\n";
 
-    $test->updateStatus();
+    my $usage = "$ProgramName basedir nativet1_1.mnc nativet1_n.mnc\n";
+    my $pipebase = shift @leftOverArgs or die $usage;
+    my @filenames = @leftOverArgs or die $usage;
 
-    $test->printStages();
-    $test->sortStages();
-    $test->printStages();
+    # an array to store the pipeline definitions for each subject
+    my $pipes = PMParray->new();
 
-    my $continue = 1;
-    while ($continue) {
-	$continue = $test->run();
+    # set up the pipeline for each subject
+    foreach my $filename (@filenames) {
+
+	# set the name based on splitting the input filename
+	my ($dir, $base, $ext) = split_path($filename, 'last', [qw(gz z Z)]);
+	my $basedir = "${pipebase}/${base}";
+	my $logdir = "${basedir}/logs";
+
+	# create the output directories if necessary
+	system("mkdir -p $logdir") unless ( -d $logdir );
+
+	# filename definitions
+	my $nuc = "${basedir}/${base}_nuc.mnc";
+	my $talTransform = "${basedir}/${base}_total.xfm";
+	my $final = "${basedir}/${base}_final.mnc";
+	my $cls = "${basedir}/${base}_cls.mnc";
+
+	# define the pipeline
+	my $pipeline;
+	if ($usePBS) {
+	    # use parallel execution
+	    $pipeline = PMPpbs->new();
+	    $pipeline->setQueue($pbsQueue);
+	    $pipeline->setHosts($pbsHosts);
+	}
+	else {
+	    # use sequential execution
+	    $pipeline = PMP->new();
+	}
+
+	$pipeline->name("insect-${base}");
+	$pipeline->statusDir($logdir);
+
+	# turn off debug messaging for now
+	$pipeline->debug(0);
+
+	# add the various stages
+	$pipeline->addStage(
+	    { name => "nuc",
+	      inputs => [$filename],
+	      outputs => [$nuc],
+	      args => ["nu_correct", $filename, $nuc] });
+	$pipeline->addStage(
+	    { name => "total",
+	      inputs => [$filename],
+	      outputs => [$talTransform],
+	      args => ["mritotal", $filename, $talTransform] });
+	$pipeline->addStage(
+	    { name => "final",
+	      inputs => [$talTransform, $nuc],
+	      outputs => [$final],
+	      args => ["mincresample", "-like", $model, "-transform", 
+		       $talTransform, $nuc, $final],
+	      prereqs => ["nuc", "total"] });
+	$pipeline->addStage(
+	    { name => "cls",
+	      inputs => [$final],
+	      outputs => [$cls],
+	      args => ["classify_clean", "-clobber", "-clean_tags", $final, $cls],
+	      prereqs => ["final"] });
+
+	# rerun any failures from a previous run of this subjects pipe
+	$pipeline->resetFailures();
+	# assume that files considered to be running are faulty
+	$pipeline->resetRunning();
+	# compute the status of each stage
+	$pipeline->updateStatus();
+
+	# now add this pipe to our happy array of pipes
+	$pipes->addPipe($pipeline);
     }
 
-    
+    # if any stages were to be reset, do so now
+    if ($reset) {
+	if ($reset eq "resetAll") {
+	    $pipes->resetAll();
+	}
+	else {
+	    $pipes->resetFromStage($reset);
+	}
+    }
+
+    # now run whatever it is that the user wanted done
+    if ($command eq "printStatus" ) {
+	$pipes->printUnfinished();
+    }
+    elsif ($command eq "statusFromFiles") {
+	$pipes->updateFromFiles();
+    }
+    elsif ($command eq "printStages") {
+	$pipes->printStages();
+    }
+    elsif ($command eq "run") { 
+	$pipes->run();
+    }
+    else {
+	print "huh? Grunkle little gnu, grunkle\n";
+    }
+
 =head1 DESCRIPTION
 
 PMP stands for "Poor Man's Pipeline" and is designed as a counterpart
@@ -68,11 +192,16 @@ Drop in replacement of parallel or sequential modes.
 =item *
 
 Full programmatic control over the pipeline. I.e. it is designed as a
-series of perl classes rather than a separate language.
+series of perl classes rather than a separate language. The key
+advantage to the approach that PMP takes is that it makes it possible
+for generic pipelines to be written since argument parsing and all
+control structures of Perl are available to the user.
 
 =item *
 
-Easily customizeable through the use of inheritance.
+Easily customizeable through the use of inheritance. Use a pipeline
+that calls on a batch queueing system or not - by changing one line
+of code.
 
 =back
 
@@ -83,7 +212,10 @@ near future are:
 
 =item *
 
-Use of a database to track dependencies and pipeline status.
+Use of a database to track dependencies and pipeline status. Using a
+database rather than the filesystem is a blessing in that it can
+allow for faster execution times since there is much less file
+access, and a curse in that it makes an application much less portable.
 
 =back
 
@@ -170,7 +302,7 @@ The foreach loop can then be closed and the pipeline itself run:
     # loop until all pipes are done
     $pipes->run();
 
-=head1 METHODS
+=head1 PUBLIC METHODS
 
 =head2 new
 
@@ -224,3 +356,200 @@ An example of adding a stage would be:
 	           $final, $cls],
 	  prereqs => ["final"] });
  
+=head2 statusDir
+
+Gets or sets the directory in which status files are placed. Status
+files are used to keep track of each stage's completion status as
+well as whatever messages the running of that stage produced. The
+following files can thus be created for each stage during the
+processing of a pipeline:
+
+=over 4
+
+=item * statusDir/pipelineName.stageName.running
+
+An empty file that is created while the stage is running or has been
+submitted to the batch system. This file is removed once the stage
+completes or crashes.
+
+=item * statusDir/pipelineName.stageName.finished
+
+An empty file that is created when a stage has completed successfully.
+
+=item * statusDir/pipelineName.stageName.failed
+
+An empty file that is created when a stage has existed with any value
+other than zero.
+
+=item * statusDir/pipelineName.stageName.log
+
+A file that is created once a stage has finished and which holds the
+messages printed to stdout and stderr during the execution of a job.
+
+=back
+
+=head2 name
+
+Gets or sets the name of the pipeline (if an argument is supplied
+than it sets the name to that argument).
+
+=head2 debug
+
+Gets or sets whether debug messages will be printed. A value of 0
+turns debugging off, anything else turns it on.
+
+=head2 printUnfinished
+
+Prints the unfinished stages. If no arguments are supplied it prints
+them tersely, if an argument is supplied it gives more detail about
+each stage that is still unfinished.
+
+=head2 statusFromFiles
+
+Sets the status of each stage based on its inputs and outputs (as
+specified in addStage). A stage will be considered to have finished
+if both the outputs and inputs exist and if the outputs are newer
+than the inputs.
+
+=head2 updateStatus
+
+Updates the status of each stage based on the status files. Should be
+called after all the stages have been added and before the pipeline
+is executed.
+
+=head2 registerPrograms
+
+Registers all the programs used in the pipeline. The assumption is
+that the first element of the args array that is passed to addStage
+contains the program name. A benefit of registering the programs is
+that PMP will die if any of the programs cannot be found on the
+environment.
+
+=head2 run
+
+Run one iteration of the pipeline. Returns a value of 0 when the
+pipeline has no more stages that can be executed.
+
+=head2 resetStage
+
+Takes a stage name as an argument and resets that stage's status so
+that it becomes runnable again.
+
+=head2 resetFailures
+
+Resets all stages that have failed so that they can be run again.
+
+=head2 resetFromStage
+
+Takes a stage name as an argument and resets all stages from that
+stage onwards (including that stage itself).
+
+=head2 resetAll
+
+Resets all stages in the pipeline.
+
+=head2 resetRunning
+
+Resets all stages thought to be running.
+
+=head2 printStage
+
+Takes a stage name as an argument and prints information about that
+stage.
+
+=head2 printStages
+
+Prints all stages in the pipeline.
+
+=head1 SEMI-PRIVATE METHODS
+
+In the good old perl tradition PMP has no private methods. The
+following methods listed here, however, are not really meant for the
+calling program. Most should not do any harm, but there is no
+guarantee. In other words, use at your own risk.
+
+=head2 stageStatusFromFiles
+
+Takes a stage as an argument and sets the status of that stage to
+finished if it has all inputs and outputs and the outputs are newer
+than the inputs.
+
+=head2 printDependencyTree
+
+Prints the dependency tree. Sort of. The issue is that the dependency
+is both downwards as well as rightwards. In other words, there is a
+guarantee that when a stage appears in this tree that it does not
+depend on any stages to its right or below it. A bit hard to read,
+which is why this is still considered a semi-private method.
+
+=head2 sortStages
+
+Sorts the stages based on their dependencies. Gets called
+automatically when needed, so has no real place in user space. The
+order only guarantees that a stage does not depend on any of the
+following stages.
+
+=head2 isStageFinished
+
+Takes a stage name as an argument and returns true if the stage has
+finished. In PMP it checks first whether the status flag has been set
+to finished, and if not whether the finished file exists for that
+stage in the statusDir. Would have to be overwritten in a subclass
+that uses a database to track the pipelines status.
+
+=head2 isStageRunning
+
+Same as above but checks whether the stage is running.
+
+=head2 isStageFailed
+
+Same as above but checks whether the stage has failed.
+
+=head2 updateStageStatus
+
+Takes a stage name as the argument and updates its status. Called
+automatically when needed and therefore has no place in userland.
+
+=head2 execStage
+
+Takes a stage name as the argument and executes that stage. This
+method is overridden in the PMPpbs subclass. In PMP it just uses the
+MNI::Spawn interface. 
+
+=head2 getStatusBase
+
+Takes a stage name as an argument and returns the base for its status files.
+
+=head2 getRunningFile
+
+Takes a stage name as an argument and returns the running filename for
+that stage.
+
+=head2 getFailedFile
+
+Takes a stage name as an argument and returns the failed filename for
+that stage.
+
+=head2 getFinishedFile
+
+Takes a stage name as an argument and returns the finished filename
+for that stage.
+
+=head2 getLogFile
+
+Takes a stage name as an argument and returns the log filename for
+that stage.
+
+=head2 declareStageRunning
+
+Takes a stage name as an argument and declares that stage to be
+running. Touches the appropriate filename. 
+
+=head2 declareStageFailed
+
+Same as above but for failure.
+
+=head2 declareStageFinished
+
+Same as above but for successful completion.
+

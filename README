@@ -1,0 +1,14 @@
+PMP - set of Perl classes for defining pipelines. See the POD
+documentation for all the gory details.
+
+Installation: copy the .pm and .pod files somewhere and set your
+PERL5LIB environment to reflect that location.
+
+CVS: The following tags exist:
+
+milestone2: addition of lots of documentation. Announced to a small
+group of people for feedback on the design.
+
+milestone1: first version that appears to run with no known bugs. That
+of course does not mean that there are no bugs (they are in fact still
+likely), but all test cases run the way that they should.
