@@ -9,8 +9,9 @@ http://wiki.bic.mni.mcgill.ca/index.php/PoorMansPipeline
 
 =head1 DESCRIPTION
 
-PMP stands for "Poor Man's Pipeline" and is designed as a counterpart
-to RPPL. The main goals of PMP are:
+PMP stands for "Poor Man's Pipeline" and is a perl library that provides
+control over arbitrarily complex commands linked through
+dependencies. The main goals of PMP are:
 
 =over 4
 
