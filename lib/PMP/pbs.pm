@@ -7,7 +7,7 @@ package PMP::pbs;
 use PMP::PMP;
 use MNI::MiscUtilities qw(shellquote);
 
-@ISA = ("PMP");
+@ISA = ("PMP::PMP");
 
 use strict;
 
