@@ -1,0 +1,6 @@
+2004-06-11	Jason Lerch	<jason@bic.mni.mcgill.ca>
+
+	* added this ChangeLog file
+	* changed the way shellquoting is handled: it is now not done by 
+	default, but has to specified in addStage.
+	

@@ -354,6 +354,13 @@ An optional array of stage names upon which this current stage
 depends. If this option is not passed to addStage then it is assumed
 that this stage has no prerequisites.
 
+=item * shellquote
+
+An optional boolean variable (0 or 1) which specifies whether
+shellquoting should be used in this stage. Only makes a difference for
+PMPpbs at this moment. By default shell-quoting is turned off; this
+flag has to be set for each stage which should use shell-quoating.
+
 =back
 
 An example of adding a stage would be:

@@ -1,4 +1,4 @@
-#!/usr/local/unstable/bin/perl -w
+#!/usr/bin/perl -w
 
 use strict;
 use PMP;
@@ -10,7 +10,7 @@ my $file4 = "four.tmp";
 
 my $test = PMP->new();
 $test->name("test-pipeline");
-$test->statusDir("/data/novartis3/temp/jason/sandbox/libraries/PMP");
+$test->statusDir("/tmp/PMP");
 
 $test->addStage( 
     { name => "stage2",

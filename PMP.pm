@@ -102,6 +102,13 @@ sub addStage {
 	warn "WARNING stage $$stage{'name'} already exists in the pipeline!\n";
     }
 
+    # shell quoting: by default, shell quoting is turned off as it can
+    # cause problems of its own. It can be turned on with a special
+    # field (which is optional).
+    if (! exists $$stage{'shellquote'} ) {
+	$$stage{'shellquote'} = 0;
+    }
+
     # the stage definition has passed the various tests - now add some 
     # internal record keeping elements to it.
 
@@ -693,7 +700,9 @@ sub printStage {
 
     if (exists $self->{STAGES}{$stageName}) {
 	my $stage = $self->{STAGES}{$stageName};
-	my $cmdstring = shellquote(@{ $$stage{'args'} });	
+	my $cmdstring = "@{ $$stage{'args'} } ";
+	$cmdstring = shellquote(@{ $$stage{'args'} }) 
+	    if ($$stage{'shellquote'});
 	print "======= $self->{NAME}: $$stage{'order'}: $stageName ========\n";
 	print "Inputs: @{ $$stage{'inputs'} }\n";
 	print "Outputs: @{ $$stage{'outputs'} }\n";
