@@ -43,6 +43,8 @@ sub new {
     $self->{toBeExecuted} = [];
     # turns extra verbose printing on or off
     $self->{DEBUG} = 1;
+    # holds a vaguely dependency tree like object;
+    $self->{dependencyTree} = [];
 
     # set the spawning options
     MNI::Spawn::SetOptions( err_action => 'ignore' );
@@ -120,22 +122,112 @@ sub addStage {
     
 }
 
+# print all unfinished stages
+sub printUnfinished {
+    my $verbose = 0;
+    my $self = shift;
+
+    # optional verbose argument
+    if (@_) { 
+	$verbose = shift;
+    }
+
+    $self->sortStages() unless $self->{isSorted};
+    print "$self->{NAME}: unfinished stages: \n";
+    foreach my $stage ( @{ $self->{sortedStages} } ) {
+	if (! $self->{STAGES}{$stage}{'finished'} ) {
+	    if ($verbose) { $self->printStage($stage); }
+	    else { print "$stage\n"; }
+	}
+    }
+    print "\n";
+}
+   
+
+
+# set the stage status from files for all stages
+sub statusFromFiles {
+    my $self = shift;
+
+    foreach my $stage ( keys %{ $self->{STAGES} } ) {
+	$self->stageStatusFromFiles($stage);
+    }
+}
+
+# determine whether a stage is runnable based on filename existence/dates
+sub stageStatusFromFiles {
+    my $self = shift;
+    my $stageName = shift;
+
+    my $t = time();
+    my $finished = 1;
+
+    foreach my $file (@{ $self->{STAGES}{$stageName}{'outputs'} }) {
+	if (-f $file) {
+	    # file exists - get the oldest output file
+	    my @stats = stat($file);
+	    if ($stats[9] < $t) {
+		$t = $stats[9];
+	    }
+	}
+	else {
+	    # output file does not exist
+	    $finished = 0;
+	}
+    }
+
+    # see if any of the input files are newer than the output files
+    foreach my $file (@{ $self->{STAGES}{$stageName}{'inputs'} }) {
+	if (! -e $file) {
+	    # input file does not exist
+	    $finished = 0;
+	    last;
+	}
+	if ($finished) {
+	    my @stats = stat($file);
+	    if ($stats[9] > $t) {
+		$finished = 0;
+	    }
+	}
+    }
+    $self->declareStageFinished($stageName) if $finished;
+    return $finished;
+}
+
+# print the dependency tree
+sub printDependencyTree {
+    my $self = shift;
+
+    # make sure stages are sorted
+    $self->sortStages() unless $self->{isSorted};
+
+    print "NOTE: this tree uses downwards and rightwards inheritance\n";
+    foreach my $level (@{ $self->{dependencyTree} }) {
+	print "@{$level} \n";
+    }
+    print "\n";
+}
+
 # created a sorted list of the various stages
 sub sortStages {
     my $self = shift;
 
     # reinitialize the array to empty
     delete $self->{sortedStages};
+    delete $self->{dependencyTree};
 
     my @keys = keys %{ $self->{STAGES} };
     my @insertedStages;
     my @uninsertedStages;
+    my @dependencyTree;
     my $currentInsertion = 0;
-    
+    my $insertionLevel = 0;
+
     # stage 1: find all the stages with no prereqs at all
     foreach my $key ( @keys ) {
 	if (! exists $self->{STAGES}{$key}{'prereqs'} ) {
 	    push @insertedStages, $key;
+	    push @{ $dependencyTree[$insertionLevel] }, $key;
 	    $currentInsertion++;
 	}
 	else {
@@ -145,17 +237,24 @@ sub sortStages {
 
     # stage 2: insert stages which only depend on already inserted stages
     while ($#insertedStages < $#keys) {
-	my @tmp = []; # temporarily hold uniserteable stages
+	my @tmp; # temporarily hold uniserteable stages
+	$insertionLevel++;
 	foreach my $key ( @uninsertedStages ) {
 	    my $validInsertion = 1;
+	    #print "Now in stage $key\n";
 	    foreach my $stage ( @{ $self->{STAGES}{$key}{'prereqs'} } ) {
-		if (! grep( $stage, @insertedStages ) ) {
+		#print "Prereq $stage of $key\n";
+		#print "blah: " . grep(/$stage/, @insertedStages);
+		if (! grep( /$stage/, @insertedStages ) ) {
+		    #print "prereq not in list\n";
 		    $validInsertion = 0;
 		    last;
 		}
 	    }
 	    if ($validInsertion == 1) { 
 		push @insertedStages, $key;
+		push @{ $dependencyTree[$insertionLevel] }, $key;
+		#print "inserted: $key\n";
 	    }
 	    else {
 		push @tmp, $key;
@@ -177,6 +276,8 @@ sub sortStages {
 
     # indicate that the list is now sorted
     $self->{isSorted} = 1;
+
+    $self->{dependencyTree} = \@dependencyTree;
 }
     
 # update status of all stages
