@@ -1,3 +1,10 @@
+2004-08-16	Jason Lerch	<jason@bic.mni.mcgill.ca>
+
+	* added ability to use only a subset of stages. Not the greatest
+	implementation yet, as inclusion of siblings in the stage
+	hierarchy is arbitrary. Only a single to stage can be specified at
+	this point in time.
+
 2004-08-04	Jason Lerch	<jason@bic.mni.mcgill.ca>
 
 	* added pipeline status report printing functions

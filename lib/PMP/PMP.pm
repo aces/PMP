@@ -49,6 +49,10 @@ sub new {
     $self->{DEBUG} = 1;
     # holds a vaguely dependency tree like object;
     $self->{dependencyTree} = [];
+    # whether all stages or only a subset are to be run
+    $self->{runAllStages} = 1;
+    # a list of the subset of stages that are to be run
+    $self->{stageSubset} = {};
 
     # set the spawning options
     MNI::Spawn::SetOptions( err_action => 'ignore' );
@@ -612,6 +616,24 @@ sub resetFailures {
     }
 }
 
+# creates a subset of stages up to a specified end-point
+sub subsetToStage {
+    my $self = shift;
+    my $stageName = shift;
+
+    # make sure stages are sorted
+    $self->sortStages() unless $self->{isSorted};
+
+    # set a flag indicating that subsets are in use
+    $self->{runAllStages} = 0;
+
+    foreach my $stage (@{ $self->{sortedStages} }) {
+	$self->{stagesSubset}{$stage} = 1;
+	print "ADDING TO SUBSET: $stage\n";
+	if ($stage eq $stageName) { last; }
+    }
+}
+
 # resets all stages from a certain point onwards
 sub resetFromStage {
     my $self = shift;
@@ -674,37 +696,43 @@ sub updateStageStatus {
     my $self = shift;
     my $stageName = shift;
 
-    my $runnable = 1;
+    my $runnable = 0;
 
-    print "Updating status of $self->{NAME} : $stageName\n" if $self->{DEBUG};
 
-    # check to make sure that it has neither finished nor failed
-    if ( $self->isStageFinished($stageName) || 
-	 $self->isStageFailed($stageName) ) {
-	print "Finished or failed\n" if $self->{DEBUG};
-	$runnable = 0;
-    }
-    # check whether a stage is running
-    elsif ( $self->isStageRunning($stageName) ) {
-	print "Running\n" if $self->{DEBUG};
-	$self->{haveRunningStages} = 1;
-	$runnable = 0;
-    }
-    # if a stage has no prereqs it is runnable
-    elsif (! exists $self->{STAGES}{$stageName}{'prereqs'} ) {
-	print "Has no prereqs\n" if $self->{DEBUG};
-	$self->{STAGES}{$stageName}{'runnable'} = 1;
-    }
-    # same if all the prereqs are finished 
-    else { 
-	foreach my $stage ( @{ $self->{STAGES}{$stageName}{'prereqs'} } ) {
-	    if ($self->{STAGES}{$stage}{'finished'} == 0) {
-		print "Prereq not finished\n" if $self->{DEBUG};
-		$runnable = 0;
-		last;
-	    }
+    # check to make sure that this stage is in the subset of stages to be run
+    if ($self->{runAllStages} == 1 || $self->{stagesSubset}{$stageName} ) {
+	print "Updating status of $self->{NAME} : $stageName\n" 
+	    if $self->{DEBUG};
+	$ runnable = 1;
+
+	# check to make sure that it has neither finished nor failed
+	if ( $self->isStageFinished($stageName) || 
+	     $self->isStageFailed($stageName) ) {
+	    print "Finished or failed\n" if $self->{DEBUG};
+	    $runnable = 0;
 	}
-	$self->{STAGES}{$stageName}{'runnable'} = $runnable;
+	# check whether a stage is running
+	elsif ( $self->isStageRunning($stageName) ) {
+	    print "Running\n" if $self->{DEBUG};
+	    $self->{haveRunningStages} = 1;
+	    $runnable = 0;
+	}
+	# if a stage has no prereqs it is runnable
+	elsif (! exists $self->{STAGES}{$stageName}{'prereqs'} ) {
+	    print "Has no prereqs\n" if $self->{DEBUG};
+	    $self->{STAGES}{$stageName}{'runnable'} = 1;
+	}
+	# same if all the prereqs are finished 
+	else { 
+	    foreach my $stage ( @{ $self->{STAGES}{$stageName}{'prereqs'} } ) {
+		if ($self->{STAGES}{$stage}{'finished'} == 0) {
+		    print "Prereq not finished\n" if $self->{DEBUG};
+		    $runnable = 0;
+		    last;
+		}
+	    }
+	    $self->{STAGES}{$stageName}{'runnable'} = $runnable;
+	}
     }
     print "Runnable status: $runnable\n\n" if $self->{DEBUG};
     return $runnable;
@@ -813,6 +841,8 @@ sub printStage {
 	print "Has started\n" if $$stage{'started'};
 	print "Has finished\n" if $$stage{'finished'};
 	print "Is ready to run\n" if $$stage{'runnable'};
+	print "Not in subset\n" unless ($self->{runAllStages} == 1 || 
+					$self->{stagesSubset}{$stageName});
 	print "\n";
     }
     else {

@@ -2,6 +2,7 @@
 
 use strict;
 use PMP::PMP;
+use Test::Simple tests => 2;
 
 my $file1 = "one.tmp";
 my $file2 = "two.tmp";
@@ -31,6 +32,8 @@ $test->addStage(
 #$test->printStage("test-stage");
 #$test->printStage("stage2");
 
+$test->subsetToStage("test-stage");
+
 $test->updateStatus();
 
 $test->printStages();
@@ -42,3 +45,6 @@ while ($continue) {
     $continue = $test->run();
 }
 
+ok(-f $test->getFinishedFile("test-stage"), 'first file exists' );
+ok(! -f $test->getFinishedFile("stage2"), 'and second file does not' );
+system("rm -rf /tmp/PMP");

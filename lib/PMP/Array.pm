@@ -154,6 +154,16 @@ sub printStatusReport {
     close REPORT;
 }
 	
+# only runs up to a specified stage in pipeline.
+sub subsetToStage {
+    my $self = shift;
+    my $filename = shift;
+
+    foreach my $pipeline( @{ $self->{PIPES} } ) {
+	$pipeline->subsetToStage( $filename );
+    }
+}
+
 # print the stages - note that this will only print the stages from the 
 # first pipe under the assumption that the rest are the same
 sub printStages {
