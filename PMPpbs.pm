@@ -109,7 +109,7 @@ $pbsSub .= "cd \$PBS_O_WORKDIR\n";
     # define the command string, shellquoting it if so desired
     my $cmdstring = "@{ $self->{STAGES}{$stageName}{'args'} } ";
     $cmdstring = shellquote(@{ $self->{STAGES}{$stageName}{'args'} }) 
-	if ($$stage{'shellquote'});
+	if ($self->{STAGES}{$stageName}{'shellquote'});
 
 # now add the environment to the submission command
     foreach my $env ( keys %ENV ) {
