@@ -224,18 +224,25 @@ sub createFilenameDotGraph {
     print DOT "digraph G {\n";
 
     foreach my $stage (@{ $self->{sortedStages} }) {
-	foreach my $out ( @{ $self->{STAGES}{$stage}{'outputs'} } ) {
-	    foreach my $in ( @{ $self->{STAGES}{$stage}{'inputs'} } ) {
-		my $source = $in;
-		my $dest = $out;
-		$source =~ s/$substring//g if $substring;
-		$dest =~ s/$substring//g if $substring;
-		$source =~ s/[\/\.-]/_/g;
-		$dest =~ s/[\/\.-]/_/g;
-		print DOT "$source -> {$dest};\n";
-	    }
-	}
+        # dot doesn't like dashes.
+        my $dest = $stage;
+        $dest =~ s/-/_/g;
+        
+        print DOT "$dest [shape=Mrecord, label=\"{$stage|";
+        foreach my $input ( @{ $self->{STAGES}{$stage}{'outputs'} } ) {
+            $input =~ s/$substring//g if $substring;
+            print DOT "$input\\n";
+        }
+        print DOT "}\"]\n";
+        
+        foreach my $dep ( @{ $self->{STAGES}{$stage}{'prereqs'} } ) {
+            my $source = $dep;
+            # dot doesn't like dashes.
+            $source =~ s/-/_/g;
+            print DOT "$source -> ${dest};\n";
+        }
     }
+
     print DOT "}\n";
     close DOT;
 }

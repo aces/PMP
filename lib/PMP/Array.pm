@@ -110,6 +110,16 @@ sub createDotGraph {
     @{ $self->{PIPES} }[0]->createDotGraph($filename);
 }
 
+# make a dot dependency graph - will only do so for the first pipe
+sub createFilenameDotGraph {
+    my $self = shift;
+    my $filename = shift;
+    my $substring = "";
+    if (@_) { $substring = shift; }
+
+    @{ $self->{PIPES} }[0]->createFilenameDotGraph($filename, $substring);
+}
+
 # print the status of all pipelines. Optional second argument is a
 # filename, in which case the status is printed to file rather than to
 # stdout

@@ -1,3 +1,8 @@
+2004-10-01	Jason Lerch	<jason@bic.mni.mcgill.ca>
+
+	* fixed createFilenameDotGraph so that it now produces sensible
+	pictures.
+
 2004-09-30	Jason Lerch	<jason@bic.mni.mcgill.ca>
 
 	* bumped version to 0.6.1
