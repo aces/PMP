@@ -1,3 +1,9 @@
+2004-09-29      Jason Lerch     <jason@bic.mni.mcgill.ca>
+
+	* added a class to submit jobs through the Sun Grid Engine
+	* added a test for the sge submission system
+	* bumped version to 0.6
+
 2004-09-17      Jason Lerch     <jason@bic.mni.mcgill.ca>
 
 	* now allows for non-existent prereqs as well as empty prereq arrays.

@@ -84,10 +84,10 @@ foreach my $filename (@filenames) {
     # define the pipeline
     my $pipeline;
     if ($usePBS) {
-	# use parallel execution
-	$pipeline = PMP::pbs->new();
-	$pipeline->setQueue($pbsQueue);
-	$pipeline->setHosts($pbsHosts);
+      # use parallel execution
+      $pipeline = PMP::pbs->new();
+      $pipeline->setQueue($pbsQueue);
+      $pipeline->setHosts($pbsHosts);
     }
     else {
 	# use sequential execution
