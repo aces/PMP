@@ -718,7 +718,8 @@ sub updateStageStatus {
 	    $runnable = 0;
 	}
 	# if a stage has no prereqs it is runnable
-	elsif (! exists $self->{STAGES}{$stageName}{'prereqs'} ) {
+	elsif (! exists $self->{STAGES}{$stageName}{'prereqs'} or
+	      $#{ $self->{STAGES}{$stageName}{'prereqs'}} == 0 ) {
 	    print "Has no prereqs\n" if $self->{DEBUG};
 	    $self->{STAGES}{$stageName}{'runnable'} = 1;
 	}
