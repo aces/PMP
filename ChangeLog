@@ -1,3 +1,8 @@
+2004-07-31 	Jason Lerch	<jason@bic.mni.mcgill.ca>
+
+	* added methods to print a CSV separated status file. Both PMP.pm
+	and PMParray are affected.
+
 2004-06-11	Jason Lerch	<jason@bic.mni.mcgill.ca>
 
 	* added this ChangeLog file

@@ -270,6 +270,57 @@ sub createDotGraph {
     close DOT;
 }
 
+# prints, in CSV format, the header row for a status report. Takes a
+# filehandle reference as the argument.
+sub printStatusReportHeader {
+    my $self = shift;
+    my $fileHandle = shift;
+
+    # make sure stages are sorted
+    $self->sortStages() unless $self->{isSorted};
+
+    # print the ID as the first element
+    print $fileHandle "ID," or die
+	"ERROR writing to file in printStatusReportHeader: $!\n";
+
+    # now print the individual stage names
+    foreach my $stage ( @{ $self->{sortedStages} } ) {
+	print $fileHandle "${stage}," or die
+	    "ERROR writing to file in printStatusReportHeader: $!\n";
+    }
+    print $fileHandle "\n";
+}
+
+# prints the status of each stage to a CSV file. Takes a filehandle as
+# an argument
+sub printStatusReport {
+    my $self = shift;
+    my $fileHandle = shift;
+
+    # make sure stages are sorted
+    $self->sortStages() unless $self->{isSorted};
+
+    # print the stage name
+    print $fileHandle "$self->{NAME}," or die
+	"ERROR writing to file in printStatusReport: $!\n";
+
+    # print the status
+    foreach my $stage ( @{ $self->{sortedStages} } ) {
+	if ( $self->{STAGES}{$stage}{failed}) {
+	    print $fileHandle "failed,";
+	}
+	elsif ($self->{STAGES}{$stage}{finished}) {
+	    print $fileHandle "finished,";
+	}
+	elsif ($self->{STAGES}{$stage}{running}) {
+	    print $fileHandle "running,";
+	}
+	else {
+	    print $fileHandle "not started,";
+	}
+    }
+    print $fileHandle "\n";
+}
 
 
 # print the dependency tree

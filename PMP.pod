@@ -483,6 +483,16 @@ representing a substring to be removed from the filenames. It then
 creates a dot file for generating a graph of the filename
 dependenencies.
 
+=head2 printStatusReportHeader 
+
+Takes a filehandle reference as an argument, and prints a CSV separated
+header containing all the stage names to that file.
+
+=head2 printStatusReport
+
+Takes a filehandle reference as an argument, and prints the status for
+each stage in CSV format to that filehandle.
+
 =head2 printStage
 
 Takes a stage name as an argument and prints information about that

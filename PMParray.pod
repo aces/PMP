@@ -64,6 +64,17 @@ Resets all stages in all pipelines.
 Prints the stages of the first pipeline in the array (i.e. it assumes
 that this information will be the same for all pipelines).
 
+=head2 createDotGraph
+
+Takes a filename as an argument, and creates a dot graph description
+therein. One can then use the command line program dot to actually
+generate the graph.
+
+=head2 printStatusReport
+
+Takes a filename as an argument and prints a CSV separated status
+report therein.
+
 =head2 sleepTime
 
 Gets or sets the number of seconds to sleep between pipeline

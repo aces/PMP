@@ -47,6 +47,8 @@ my @argTbl = (
      "Print the pipeline stages."],
     ["-print-status", "const", "printStatus", \$command,
      "Print the status of each pipeline."],
+    ["-write-status-report", "const", "writeReport", \$command,
+     "Write a CSV separated status report."],
     ["Stage Control", "section"],
     ["-reset-all", "const", "resetAll", \$reset,
      "Start the pipeline from the beginning."],
@@ -130,7 +132,7 @@ foreach my $filename (@filenames) {
     # rerun any failures from a previous run of this subjects pipe
     $pipeline->resetFailures();
     # assume that files considered to be running are faulty
-    $pipeline->resetRunning();
+    #$pipeline->resetRunning();
     # compute the status of each stage
     $pipeline->updateStatus();
     
@@ -163,6 +165,9 @@ elsif ($command eq "printStages") {
 }
 elsif ($command eq "run") { 
     $pipes->run();
+}
+elsif ($command eq "writeReport") {
+    $pipes->printStatusReport("status-report.csv");
 }
 else {
     print "huh? Grunkle little gnu, grunkle\n";

@@ -48,7 +48,7 @@ sub run {
     my $allFinished = 0;
     while (! $allFinished) {
 	$allFinished = 1;
-	foreach my $pipeline ( @{ $self->{PIPES} } ) {
+ 	foreach my $pipeline ( @{ $self->{PIPES} } ) {
 	    my $status = $pipeline->run();
 	    $allFinished = 0 if $status;
 	}
@@ -110,6 +110,25 @@ sub createDotGraph {
     @{ $self->{PIPES} }[0]->createDotGraph($filename);
 }
 
+# create a CVS file reporting on status of all stages
+sub printStatusReport {
+    my $self = shift;
+    my $filename = shift;
+
+    open REPORT, ">$filename" or die 
+	"ERROR opening report file $filename for writing: $!\n";
+
+    # write the header
+    @{ $self->{PIPES} }[0]->printStatusReportHeader(*REPORT);
+
+    # write reports for all pipelines
+    foreach my $pipeline ( @{ $self->{PIPES} } ) {
+	$pipeline->printStatusReport(*REPORT);
+    }
+
+    close REPORT;
+}
+	
 # print the stages - note that this will only print the stages from the 
 # first pipe under the assumption that the rest are the same
 sub printStages {
