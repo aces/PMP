@@ -1,3 +1,10 @@
+2004-10-08	Jason Lerch	<jason@bic.mni.mcgill.ca>
+
+	* bumped version to 0.6.5
+	* incorporated Oleg's bug fixes
+	* added sge_test to CVS repository.
+	* added AUTHORS file.
+	
 2004-10-07	Jason Lerch	<jason@bic.mni.mcgill.ca>
 
 	* added missing methods to the various POD files.
