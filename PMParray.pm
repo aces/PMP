@@ -40,7 +40,7 @@ sub run {
     while (! $allFinished) {
 	$allFinished = 1;
 	foreach my $pipeline ( @{ $self->{PIPES} } ) {
-	    my $status ->$pipeline->run();
+	    my $status = $pipeline->run();
 	    $allFinished = 0 if $status;
 	}
 	sleep 15;
@@ -64,6 +64,14 @@ sub printUnfinished {
     foreach my $pipe ( @{ $self->{PIPES} } ) {
 	$pipe->printUnfinished();
     }
+}
+
+# print the stages - note that this will only print the stages from the 
+# first pipe under the assumption that the rest are the same
+sub printStages {
+    my $self = shift;
+
+    @{ $self->{PIPES} }[0]->printStages();
 }
 
 1;

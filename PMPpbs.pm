@@ -10,14 +10,51 @@ use PMP;
 
 use strict;
 
+# set the batch queue
+sub setQueue {
+    my $self = shift;
+    my $Q = shift;
+
+    if (! $Q =~ /short/ || $Q =~ /medium/ || $Q =~ /long/ ) {
+	die "ERROR: illegal Q $Q - has to be either short, medium, or long\n";
+    }
+    $self->{pbsQueue} = $Q;
+}
+
+# set the batch hosts
+sub setHosts {
+    my $self = shift;
+    my $hosts = shift;
+
+    # some error checking should go here ...
+
+    $self->{pbsHosts} = $hosts;
+}
+
 # overwrite the execStage method and use the PBS batch queueing system
 # to submit jobs
 sub execStage {
     my $self = shift;
     my $stageName = shift;
 
+    # get the pipe queue - use long as default
+    my $Q = "long";
+    if (exists $self->{pbsQueue}) {
+	$Q = $self->{pbsQueue};
+    }
+
+    # get the pipe hosts
+    my $hosts = "bullcalf:yorick";
+    if (exists $self->{pbsHosts}) {
+	$hosts = $self->{pbsHosts};
+    }
+
     # run the stage in question
     $self->declareStageRunning($stageName);
+    my $runningFile = $self->getRunningFile($stageName);
+
+    # print the stage to stdout
+    $self->printStage($stageName);
 
     # now set up the batch job
     my $logFile = $self->getLogFile($stageName);
@@ -26,13 +63,14 @@ sub execStage {
     my $pbsSub = <<END;
 
 #!/bin/sh
-#PBS -q short
+#PBS -q $Q
 #PBS -N $stageName
 # send mail on crash
 #PBS -m a
 # join STDERR and STDOUT
+#PBS -j oe
 #PBS -o $logFile
-#PBS -l host=bullcalf
+#PBS -l host=$hosts
 
 END
 
@@ -51,6 +89,8 @@ then
 else 
   touch $failedFile
 fi
+
+rm $runningFile
 
 END
 

@@ -4,6 +4,223 @@ PMP - Poor Man's Pipeline; programmatic pipeline control
 
 =head1 SYNOPSIS
 
-use PMP;
+    use PMP;
 
+    my $file1 = "one.tmp";
+    my $file2 = "two.tmp";
+    my $file3 = "three.tmp";
+    my $file4 = "four.tmp";
+
+    my $test = PMP->new();
+    $test->name("test-pipeline");
+    $test->statusDir("/data/novartis3/temp/jason/sandbox/libraries/PMP");
+
+    $test->addStage( 
+	{ name => "stage2",
+	  inputs => [$file3],
+	  outputs => [$file4],
+	  prereqs => ["test-stage"],
+	  args => ["touch", $file4]
+	} );
+    $test->addStage( 
+	{ name => "test-stage",
+	  inputs => [$file1, $file2],
+	  outputs => [$file3],
+	  args => ["touch", $file3] 
+	} );
+
+
+    $test->updateStatus();
+
+    $test->printStages();
+    $test->sortStages();
+    $test->printStages();
+
+    my $continue = 1;
+    while ($continue) {
+	$continue = $test->run();
+    }
+
+    
 =head1 DESCRIPTION
+
+PMP stands for "Poor Man's Pipeline" and is designed as a counterpart
+to RPPL. The main goals of PMP are:
+
+=over 4
+
+=item *
+
+Execution of a set of commands describing a pipeline
+
+=item *
+
+Tracking of dependencies between the different commands
+
+=item *
+
+Parallel execution mode by using a batch queueing system
+
+=item *
+
+Drop in replacement of parallel or sequential modes.
+
+=item *
+
+Full programmatic control over the pipeline. I.e. it is designed as a
+series of perl classes rather than a separate language.
+
+=item *
+
+Easily customizeable through the use of inheritance.
+
+=back
+
+The main features currently not present which might be added in the
+near future are:
+
+=over 4
+
+=item *
+
+Use of a database to track dependencies and pipeline status.
+
+=back
+
+=head1 COMPONENTS
+
+PMP currently consists of three different classes:
+
+=over 4
+
+=item * PMP
+
+The main class which is used to configure a pipeline. A pipeline is,
+for the purposes of PMP, defined as a the set of commands and their
+dependencies for a single subject.
+
+=item * PMPpbs
+
+A subclass of PMP in which the command execution uses the PBS batch
+queueing system rather than the MNI::Spawn interface. Otherwise
+should be entirely exchangeable with PMP
+
+=item * PMParray
+
+Designed to deal with a set of pipelines. Most pipeline runs will
+consist of multiple subjects executing the same set of commands -
+PMParray is designed to make that easy.
+
+=back
+
+=head1 OVERVIEW
+
+The usual way of setting up a PMP pipeline is the following:
+
+Import the necessary components through the use statement, e.g.:
+
+    use PMP;
+    use PMPpbs;
+    use PMParray;
+
+Where usually only PMP or PMPpbs are needed, not both. The pipearray
+is also declared at this early point:
+
+    my $pipes = PMParray->new();
+
+Then comes any argument processing that your application might have
+to deal with as well as setting up some global variables that will
+remain unchanged for each pipeline. This is followed by the
+definitions of each individual pipeline, usually placed inside a
+foreach loop which processes each subject. Inside this loop the
+pipeline is initialised like so:
+
+    my $pipeline = PMP->new(); # sequential version
+    my $pipeline = PMPpbs->new(); # parallel version using PBS
+
+Then certain globals for that pipeline are set, such as
+
+    $pipeline->name("some-name");
+    $pipeline->statusDir("/some/directory");
+
+This makes a good place also for defining variables that change for
+each subject, such as input and output filenames.
+
+This is followed by defining all the stages through the addStage
+method, an example of which is:
+
+    $pipeline->addStage(
+	{ name => "total",
+	  inputs => [$filename],
+	  outputs => [$talTransform],
+	  args => ["mritotal", $filename, $talTransform] });
+
+After all the stages have been defined some further initialisation
+commands can be run:
+
+    # restart all stages that failed in a previous run
+    $pipeline->resetFailures();
+
+Then the pipeline can be added to the Pipearray:
+
+    $pipes->addPipe($pipeline);
+
+The foreach loop can then be closed and the pipeline itself run:
+
+    # loop until all pipes are done
+    $pipes->run();
+
+=head1 METHODS
+
+=head2 new
+
+Initialises a pipeline. Has to be the first method called. Takes no arguments.
+
+=head2 addStage
+
+Adds a stage definition to the pipeline. Takes a hash as an
+argument. The hash has the following components:
+
+=over 4
+
+=item * name
+
+The name of that particular stage. The name is what will be used to
+address this stage for later usage (such as dependency tracking).
+
+=item * inputs
+
+An array of the input filenames. The only use this array is currently
+put to is establishing pipeline status based on file existence and
+dates.
+
+=item * outputs
+
+An array of output filenames. Only currently used for establishing
+pipeline status based on file existence and dates.
+
+=item * args
+
+An array containing the actual command that will be run when this
+stage is executed. The first element is the program name, the
+following the options and filenames in the same order as that program
+needs them.
+
+=item * prereqs
+
+An optional array of stage names upon which this current stage
+depends. If this option is not passed to addStage then it is assumed
+that this stage has no prerequisites.
+
+=back
+
+An example of adding a stage would be:
+
+    $pipeline->addStage(
+	{ name => "cls",
+	  inputs => [$final],
+	  outputs => [$cls],
+	  args => ["classify_clean", "-clobber", "-clean_tags", 
+	           $final, $cls],
+	  prereqs => ["final"] });
+ 

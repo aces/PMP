@@ -1,0 +1,4 @@
+When job is killed and rerun the batch queues are not first cleared -
+not sure if this is a bug or a feature ...
+
+Unable to reset all jobs from a certain stage. This should be added soon.
