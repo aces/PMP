@@ -8,7 +8,7 @@ package PMP;
 use strict;
 use MNI::Spawn;
 use MNI::Startup;
-
+use MNI::MiscUtilities qw(shellquote);
 
 # the constructor
 sub new {
@@ -680,11 +680,11 @@ sub printStage {
 
     if (exists $self->{STAGES}{$stageName}) {
 	my $stage = $self->{STAGES}{$stageName};
-	
+	my $cmdstring = shellquote(@{ $$stage{'args'} });	
 	print "======= $self->{NAME}: $$stage{'order'}: $stageName ========\n";
 	print "Inputs: @{ $$stage{'inputs'} }\n";
 	print "Outputs: @{ $$stage{'outputs'} }\n";
-	print "Args: @{ $$stage{'args'} }\n";
+	print "Args: $cmdstring\n";
 	print "Prereqs: @{ $$stage{'prereqs'} }\n" 
 	    if exists $$stage{'prereqs'};
 	print "Has started\n" if $$stage{'started'};

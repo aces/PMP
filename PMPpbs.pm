@@ -5,6 +5,7 @@
 
 package PMPpbs;
 use PMP;
+use MNI::MiscUtilities qw(shellquote);
 
 @ISA = ("PMP");
 
@@ -15,7 +16,7 @@ sub setQueue {
     my $self = shift;
     my $Q = shift;
 
-    if (! $Q =~ /short/ || $Q =~ /medium/ || $Q =~ /long/ ) {
+    if (! ( $Q =~ /short/ || $Q =~ /medium/ || $Q =~ /long/ ) ) {
 	die "ERROR: illegal Q $Q - has to be either short, medium, or long\n";
     }
     $self->{pbsQueue} = $Q;
@@ -82,6 +83,10 @@ sub execStage {
 
 END
 
+$pbsSub .= "cd \$PBS_O_WORKDIR\n";
+
+my $cmdstring = shellquote(@{ $self->{STAGES}{$stageName}{'args'} });
+
 # now add the environment to the submission command
     foreach my $env ( keys %ENV ) {
 	$pbsSub .= "export ${env}=\"$ENV{$env}\"\n";
@@ -90,8 +95,8 @@ END
     # and the actual commands
     $pbsSub .= <<END;
 echo "Working directory: " `pwd`
-echo \'@{ $self->{STAGES}{$stageName}{'args'} }\'
-@{ $self->{STAGES}{$stageName}{'args'} }
+echo \'$cmdstring\'
+$cmdstring
 if [ "\$?" == "0" ] 
 then 
   touch $finishedFile
