@@ -4,7 +4,16 @@ documentation for all the gory details.
 Installation: copy the .pm and .pod files somewhere and set your
 PERL5LIB environment to reflect that location.
 
-CVS: The following tags exist:
+CVS: The following tags exist or are planned:
+
+milestone3 [planned: * = undone, + = done.]:
+* additiong of -to type specification of resetting of stages
+* pretty printing of stages
+* documentation of which methods affect the actual filesystem and
+which ones are safe to run.
+* correct installation of modules.
+* automation of startup tasks in PBSarray.pm
+* announcement to BIC community.
 
 milestone2: addition of lots of documentation. Announced to a small
 group of people for feedback on the design.

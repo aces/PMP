@@ -95,6 +95,15 @@ sub resetAll {
     }
 }
 
+# register the programs - note that this will only register the
+# programs for the first pipe, assuming the rest to be the same.
+sub registerPrograms {
+    my $self = shift;
+    
+    @{ $self->{PIPES} }[0]->registerPrograms();
+}
+
+
 # print the stages - note that this will only print the stages from the 
 # first pipe under the assumption that the rest are the same
 sub printStages {

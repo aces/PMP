@@ -194,6 +194,69 @@ sub stageStatusFromFiles {
     return $finished;
 }
 
+# create a dependency graph of the filenames
+# optional third argument - substring to remove
+sub createFilenameDotGraph {
+    my $self = shift;
+    my $filename = shift;
+    my $substring = undef;
+    if (@_) { $substring = shift; }
+
+    $self->sortStages() unless $self->{isSorted};
+
+    open DOT, ">$filename" or die "ERROR opening dot file $filename: $!\n";
+
+    print DOT "digraph G {\n";
+
+    foreach my $stage (@{ $self->{sortedStages} }) {
+	foreach my $out ( @{ $self->{STAGES}{$stage}{'outputs'} } ) {
+	    foreach my $in ( @{ $self->{STAGES}{$stage}{'inputs'} } ) {
+		my $source = $in;
+		my $dest = $out;
+		$source =~ s/$substring//g if $substring;
+		$dest =~ s/$substring//g if $substring;
+		$source =~ s/[\/\.-]/_/g;
+		$dest =~ s/[\/\.-]/_/g;
+		print DOT "$source -> {$dest};\n";
+	    }
+	}
+    }
+    print DOT "}\n";
+    close DOT;
+    
+
+}
+	    
+
+
+
+# create a file that can be used by dot to generate a dependency graph
+sub createDotGraph {
+    my $self = shift;
+    my $filename = shift;
+
+    $self->sortStages() unless $self->{isSorted};
+
+    open DOT, ">$filename" or die "ERROR opening dot file $filename: $!\n";
+
+    print DOT "digraph G {\n";
+
+    foreach my $stage (@{ $self->{sortedStages} }) {
+	foreach my $dep ( @{ $self->{STAGES}{$stage}{'prereqs'} } ) {
+	    my $source = $dep;
+	    # dot doesn't like dashes.
+	    $source =~ s/-/_/g;
+	    my $dest = $stage;
+	    $dest =~ s/-/_/g;
+	    print DOT "$source -> ${dest};\n";
+	}
+    }
+    print DOT "}\n";
+    close DOT;
+}
+
+
+
 # print the dependency tree
 sub printDependencyTree {
     my $self = shift;

@@ -89,7 +89,8 @@ END
 
     # and the actual commands
     $pbsSub .= <<END;
-
+echo "Working directory: " `pwd`
+echo \'@{ $self->{STAGES}{$stageName}{'args'} }\'
 @{ $self->{STAGES}{$stageName}{'args'} }
 if [ "\$?" == "0" ] 
 then 

@@ -191,6 +191,10 @@ Drop in replacement of parallel or sequential modes.
 
 =item *
 
+Generation of dependency graphs for easier debugging.
+
+=item *
+
 Full programmatic control over the pipeline. I.e. it is designed as a
 series of perl classes rather than a separate language. The key
 advantage to the approach that PMP takes is that it makes it possible
@@ -451,6 +455,20 @@ Resets all stages in the pipeline.
 =head2 resetRunning
 
 Resets all stages thought to be running.
+
+=head2 createDotGraph
+
+Takes an filename as an input - a graph description will be written to
+that file. One can use dot (a tool that is part of graphviz) to
+generate a graphical representation of the dependecies like so: dot
+-Tps filename -o output.ps.
+
+=head2 createFilenameDotGraph
+
+Takes a filename as an argument as well as optional third argument
+representing a substring to be removed from the filenames. It then
+creates a dot file for generating a graph of the filename
+dependenencies.
 
 =head2 printStage
 

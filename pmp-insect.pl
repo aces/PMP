@@ -1,4 +1,4 @@
-#!/usr/local/unstable/bin/perl -w
+#!/usr/bin/env perl
 
 # run standard insect using the PMP system
 # mostly meant as a test-bed for PMP
@@ -129,6 +129,9 @@ foreach my $filename (@filenames) {
     $pipeline->resetRunning();
     # compute the status of each stage
     $pipeline->updateStatus();
+    
+    # create a dependency graph that can be turned into a pretty picture.
+    $pipeline->createDotGraph("test.dot");
 
     # now add this pipe to our happy array of pipes
     $pipes->addPipe($pipeline);
