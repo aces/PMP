@@ -18,6 +18,8 @@ sub new {
 
     # holds the pipelines
     $self->{PIPES} = [];
+    # default waiting time
+    $self->{SLEEP} = 15;
 
     # bring the class into existence
     bless($self, $class);
@@ -32,6 +34,13 @@ sub addPipe {
     push @{ $self->{PIPES} }, $pipeline;
 }
 
+# get or set the sleep time
+sub sleepTime {
+    my $self = shift;
+    if (@_) { $self->{SLEEP} = shift; }
+    return $self->{SLEEP};
+}
+
 # runs all the pipes to completion/crash
 sub run {
     my $self = shift;
@@ -43,7 +52,7 @@ sub run {
 	    my $status = $pipeline->run();
 	    $allFinished = 0 if $status;
 	}
-	sleep 15;
+	sleep $self->{SLEEP};
     }
     print "\nStopped Processing all pipeline.\n\n";
 }
@@ -63,6 +72,26 @@ sub printUnfinished {
 
     foreach my $pipe ( @{ $self->{PIPES} } ) {
 	$pipe->printUnfinished();
+    }
+}
+
+# reset all stages from a certain point in the dependency tree
+sub resetFromStage {
+    my $self = shift;
+    my $stageName = shift;
+
+    foreach my $pipe ( @{ $self->{PIPES} } ) {
+	$pipe->resetFromStage($stageName);
+    }
+}
+
+# reset all stages
+sub resetAll {
+    my $self = shift;
+    my $stageName = shift;
+
+    foreach my $pipe ( @{ $self->{PIPES} } ) {
+	$pipe->resetAll();
     }
 }
 

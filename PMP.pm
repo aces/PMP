@@ -289,7 +289,11 @@ sub updateStatus {
     # reset stages running flag
     $self->{haveRunningStages} = 0;
 
-    foreach my $key ( keys %{ $self->{STAGES} } ) {
+    # sort stages if necessary
+    $self->sortStages() unless $self->{isSorted};
+
+#    foreach my $key ( keys %{ $self->{STAGES} } ) {
+    foreach my $key ( @{ $self->{sortedStages} } ) {
 	if ($self->updateStageStatus($key)) {
 	    push @toBeExecuted, $key;
 	}
@@ -426,6 +430,54 @@ sub resetFailures {
 
     foreach my $key ( keys %{ $self->{STAGES} } ) {
 	$self->resetStage($key) if $self->isStageFailed($key);
+    }
+}
+
+# resets all stages from a certain point onwards
+sub resetFromStage {
+    my $self = shift;
+    my $stageName = shift;
+
+    # make sure stages are sorted
+    $self->sortStages() unless $self->{isSorted};
+
+    my @stagesToBeReset;
+    push @stagesToBeReset, $stageName;
+
+    my $numAdded = 1;
+
+    print "\n$self->{NAME}: resetting all stages from $stageName\n";
+
+    while ($numAdded) { #keep going until no more stages are added
+	$numAdded = 0;
+	foreach my $stage ( keys %{ $self->{STAGES} } ) {
+	    foreach my $prereq ( @stagesToBeReset ) {
+		if (grep(/$prereq/, @{ $self->{STAGES}{$stage}{'prereqs'} })) {
+		    unless (grep(/$stage/, @stagesToBeReset)) {
+			# a stage in the to be reset list is a prereq for this
+			# stage - reset it too.
+			push @stagesToBeReset, $stage; 
+			$numAdded++;
+		    }
+		}
+	    }
+	}
+    }
+
+    # do the actual resetting
+    foreach my $stage (@stagesToBeReset) {
+	$self->resetStage($stage);
+	print "$self->{NAME}: reset $stage\n";
+    }
+    print "\n";
+}	    
+
+# reset all stages
+sub resetAll {
+    my $self = shift;
+
+    foreach my $key ( keys %{ $self->{STAGES} } ) {
+	$self->resetStage($key);
     }
 }
 

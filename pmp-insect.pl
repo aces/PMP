@@ -22,6 +22,8 @@ my $usePBS = undef;
 my $pbsQueue = "long";
 my $pbsHosts = "yorick:bullcalf";
 my $command = "printStatus";
+my $reset = undef;
+my $sleepTime = 10;
 
 my @leftOverArgs;
 
@@ -34,6 +36,8 @@ my @argTbl = (
      "Which PBS queue to use [short|medium|long]."],
     ["-hosts", "string", 1, \$pbsHosts,
      "Colon separated list of pbs hosts"],
+    ["-sleep-time", "integer", 1, \$sleepTime,
+     "Set the sleep time."],
     ["Pipeline control", "section"],
     ["-run", "const", "run", \$command,
      "Run the pipeline."],
@@ -42,7 +46,12 @@ my @argTbl = (
     ["-print-stages", "const", "printStages", \$command,
      "Print the pipeline stages."],
     ["-print-status", "const", "printStatus", \$command,
-     "Print the status of each pipeline."]
+     "Print the status of each pipeline."],
+    ["Stage Control", "section"],
+    ["-reset-all", "const", "resetAll", \$reset,
+     "Start the pipeline from the beginning."],
+    ["-reset-from", "string", 1, \$reset,
+     "Restart from the specified stage."]
 );
 GetOptions(\@argTbl, \@ARGV, \@leftOverArgs) or die "\n";
 
@@ -86,6 +95,9 @@ foreach my $filename (@filenames) {
     $pipeline->name("insect-${base}");
     $pipeline->statusDir($logdir);
 
+    # turn off debug messaging for now
+    $pipeline->debug(0);
+
     # add the various stages
     $pipeline->addStage(
 	{ name => "nuc",
@@ -120,6 +132,16 @@ foreach my $filename (@filenames) {
 
     # now add this pipe to our happy array of pipes
     $pipes->addPipe($pipeline);
+}
+
+# if any stages were to be reset, do so now
+if ($reset) {
+    if ($reset eq "resetAll") {
+	$pipes->resetAll();
+    }
+    else {
+	$pipes->resetFromStage($reset);
+    }
 }
 
 # now run whatever it is that the user wanted done

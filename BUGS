@@ -1,4 +1,7 @@
 When job is killed and rerun the batch queues are not first cleared -
 not sure if this is a bug or a feature ...
 
-Unable to reset all jobs from a certain stage. This should be added soon.
+If one job fails I don't think it keeps processing those that it can
+keep processing. Not sure if this bug is true, but should lookm into it.
+
+Nicer formatting of the printStage command would not hurt.

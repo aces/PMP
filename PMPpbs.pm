@@ -49,6 +49,14 @@ sub execStage {
 	$hosts = $self->{pbsHosts};
     }
 
+    # set the job name
+    my $jobName = "$self->{NAME}:$stageName";
+    $jobName =~ s/;/_/g;
+    $jobName =~ s/,/_/g;
+    $jobName =~ s/\s/_/g;
+    $jobName = "N$jobName" if ($jobName !~ /^[a-zA-Z]/);
+    $jobName = substr($jobName, 0, 15);
+
     # run the stage in question
     $self->declareStageRunning($stageName);
     my $runningFile = $self->getRunningFile($stageName);
@@ -64,7 +72,7 @@ sub execStage {
 
 #!/bin/sh
 #PBS -q $Q
-#PBS -N $stageName
+#PBS -N $jobName
 # send mail on crash
 #PBS -m a
 # join STDERR and STDOUT
