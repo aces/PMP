@@ -16,7 +16,11 @@ sub execStage {
 
     # set the job name
     my $jobName = "$self->{NAME}-${stageName}";
-    
+    $jobName =~ s/;/_/g;
+    $jobName =~ s/,/_/g;
+    $jobName =~ s/\s/_/g;
+    $jobName = "N$jobName" if ($jobName !~ /^[a-zA-Z]/); 
+
     # run the stage in question
     $self->declareStageRunning($stageName);
     my $runningFile = $self->getRunningFile($stageName);

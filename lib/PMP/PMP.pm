@@ -12,7 +12,7 @@ use MNI::MiscUtilities qw(shellquote);
 
 # the version number
 
-$PMP::VERSION = '0.6';
+$PMP::VERSION = '0.6.1';
 
 # the constructor
 sub new {
@@ -406,7 +406,7 @@ sub sortStages {
     my $currentInsertion = 0;
     my $insertionLevel = 0;
 
-    print "in sort stages\n";
+    #print "in sort stages\n";
     # stage 1: find all the stages with no prereqs at all
     foreach my $key ( @keys ) {
 	if (! exists $self->{STAGES}{$key}{'prereqs'} ) {
@@ -430,8 +430,8 @@ sub sortStages {
 		#print "Prereq $stage of $key\n";
 		#print "blah: " . grep(/$stage/, @insertedStages);
 		if (! grep( /$stage/, @insertedStages ) and
-		   grep( /$stage/, @keys) ) {
-		    #print "prereq not in list\n";
+		   grep( /$stage/, @keys)  ) {
+		    print "prereq $stage for $key not in list\n";
 		    $validInsertion = 0;
 		    last;
 		}
@@ -703,12 +703,14 @@ sub updateStageStatus {
 
     my $runnable = 0;
 
-    print "In status for stage: $stageName\n";
+    # print "In status for stage: $stageName\n";
     # check to make sure that this stage is in the subset of stages to be run
     if ($self->{runAllStages} == 1 || $self->{stagesSubset}{$stageName} ) {
 	print "Updating status of $self->{NAME} : $stageName\n" 
 	    if $self->{DEBUG};
 	$runnable = 1;
+    print "Num prereqs: $#{ $self->{STAGES}{$stageName}{'prereqs'}}\n" 
+        if ($self->{DEBUG});
 
 	# check to make sure that it has neither finished nor failed
 	if ( $self->isStageFinished($stageName) || 
@@ -724,14 +726,16 @@ sub updateStageStatus {
 	}
 	# if a stage has no prereqs it is runnable
 	elsif (! exists $self->{STAGES}{$stageName}{'prereqs'} or
-	      $#{ $self->{STAGES}{$stageName}{'prereqs'}} == 0 ) {
+	      $#{ $self->{STAGES}{$stageName}{'prereqs'}} == -1 ) {
 	    print "Has no prereqs\n" if $self->{DEBUG};
+
 	    $self->{STAGES}{$stageName}{'runnable'} = 1;
 	}
 	# same if all the prereqs are finished 
 	else { 
 	    foreach my $stage ( @{ $self->{STAGES}{$stageName}{'prereqs'} } ) {
-		if ($self->{STAGES}{$stage}{'finished'} == 0) {
+            if (grep(/$stage/, @{$self->{sortedStages}}) and
+                $self->{STAGES}{$stage}{'finished'} == 0) {
 		    print "Prereq not finished\n" if $self->{DEBUG};
 		    $runnable = 0;
 		    last;

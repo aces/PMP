@@ -5,7 +5,7 @@
 use strict;
 use PMP::PMP;
 
-use Test::Simple tests => 3;
+use Test::More tests => 4;
 
 my $file1 = "one.tmp";
 my $file2 = "two.tmp";
@@ -51,6 +51,8 @@ while ($continue) {
     $continue = $test->run();
 }
 
+# test that file with no prereqs exists
+ok(-f $test->getFinishedFile("stage4"), "file exits" );
 # make sure file with incorrect prereq is created anyway
 ok(-f $test->getFinishedFile("stage2"), "file exists" );
 

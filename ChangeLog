@@ -1,3 +1,9 @@
+2004-09-30	Jason Lerch	<jason@bic.mni.mcgill.ca>
+
+	* bumped version to 0.6.1
+	* skips SGE test if qsub not present in path
+	* fixed a bug in PMP::updateStageStatus
+
 2004-09-29      Jason Lerch     <jason@bic.mni.mcgill.ca>
 
 	* added a class to submit jobs through the Sun Grid Engine
