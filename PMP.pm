@@ -41,6 +41,8 @@ sub new {
     $self->{areRegistered} = 0;
     # list of stages to be executed in the next iteration
     $self->{toBeExecuted} = [];
+    # turns extra verbose printing on or off
+    $self->{DEBUG} = 1;
 
     # set the spawning options
     MNI::Spawn::SetOptions( err_action => 'ignore' );
@@ -55,6 +57,13 @@ sub name {
     my $self = shift;
     if (@_) { $self->{NAME} = shift; }
     return $self->{NAME};
+}
+
+# get or set the debug status
+sub debug {
+    my $self = shift;
+    if (@_) { $self->{DEBUG} = shift; }
+    return $self->{DEBUG};
 }
 
 # get or set the directory to be used for the status file
@@ -176,6 +185,9 @@ sub updateStatus {
     delete $self->{toBeExecuted};
     my @toBeExecuted;
 
+    # reset stages running flag
+    $self->{haveRunningStages} = 0;
+
     foreach my $key ( keys %{ $self->{STAGES} } ) {
 	if ($self->updateStageStatus($key)) {
 	    push @toBeExecuted, $key;
@@ -183,8 +195,20 @@ sub updateStatus {
     }
     $self->{toBeExecuted} = \@toBeExecuted;
 
+    my $numStagesToBeRun = $#toBeExecuted + 1;
+
+    print "$numStagesToBeRun: stage[s] to be run: @toBeExecuted \n" 
+	if $self->{DEBUG};
     # returns 0 if there are no more stages to be executed
-    return $#toBeExecuted + 1;
+    if ( $numStagesToBeRun ) {
+	return $numStagesToBeRun;
+    }
+    elsif ( $self->{haveRunningStages} ) {
+	return 1;
+    }
+    else {
+	return 0;
+    }
 }
 
 # register the programs
@@ -235,6 +259,26 @@ sub isStageFinished {
     return $returnVal;
 }
 
+# query whether a stage is running
+sub isStageRunning {
+    my $self = shift;
+    my $stageName = shift;
+
+    my $returnVal = 0;
+
+    # check whether running status flag is set
+    if ( $self->{STAGES}{$stageName}{'running'} ) { 
+	$returnVal = 1;
+    }
+    elsif ( -f $self->getRunningFile($stageName) ) {
+	# we have a running stage from the status files
+	warn "Changing status of $stageName in pipe $self->{NAME} to failed\n";
+	$self->{STAGES}{$stageName}{'running'} = 1;
+	$returnVal =  1;
+    }
+    return $returnVal;
+}
+
 # query whether a stage has failed
 sub isStageFailed {
     my $self = shift;
@@ -266,6 +310,9 @@ sub resetStage {
     elsif ( $self->isStageFailed($stageName) ) {
 	unlink $self->getFailedFile($stageName);
     }
+    elsif ( $self->isStageRunning($stageName) ) {
+	unlink $self->getRunningFile($stageName);
+    }
 
     $self->{STAGES}{$stageName}{'failed'} = 0;
     $self->{STAGES}{$stageName}{'finished'} = 0;
@@ -281,6 +328,15 @@ sub resetFailures {
     }
 }
 
+# rerun all current jobs that are running
+sub resetRunning {
+    my $self = shift;
+
+    foreach my $key ( keys %{ $self->{STAGES} } ) {
+	$self->resetStage($key) if $self->isStageRunning($key);
+    }
+}
+
 # update the status of a stage
 sub updateStageStatus {
     my $self = shift;
@@ -288,25 +344,37 @@ sub updateStageStatus {
 
     my $runnable = 1;
 
+    print "Updating status of $self->{NAME} : $stageName\n" if $self->{DEBUG};
+
     # check to make sure that it has neither finished nor failed
     if ( $self->isStageFinished($stageName) || 
 	 $self->isStageFailed($stageName) ) {
+	print "Finished or failed\n" if $self->{DEBUG};
+	$runnable = 0;
+    }
+    # check whether a stage is running
+    elsif ( $self->isStageRunning($stageName) ) {
+	print "Running\n" if $self->{DEBUG};
+	$self->{haveRunningStages} = 1;
 	$runnable = 0;
     }
     # if a stage has no prereqs it is runnable
     elsif (! exists $self->{STAGES}{$stageName}{'prereqs'} ) {
+	print "Has no prereqs\n" if $self->{DEBUG};
 	$self->{STAGES}{$stageName}{'runnable'} = 1;
     }
     # same if all the prereqs are finished 
     else { 
 	foreach my $stage ( @{ $self->{STAGES}{$stageName}{'prereqs'} } ) {
 	    if ($self->{STAGES}{$stage}{'finished'} == 0) {
+		print "Prereq not finished\n" if $self->{DEBUG};
 		$runnable = 0;
 		last;
 	    }
 	}
 	$self->{STAGES}{$stageName}{'runnable'} = $runnable;
     }
+    print "Runnable status: $runnable\n\n" if $self->{DEBUG};
     return $runnable;
 }
 
@@ -402,7 +470,7 @@ sub printStage {
     if (exists $self->{STAGES}{$stageName}) {
 	my $stage = $self->{STAGES}{$stageName};
 	
-	print "======== $$stage{'order'}: $stageName ========\n";
+	print "======= $self->{NAME}: $$stage{'order'}: $stageName ========\n";
 	print "Inputs: @{ $$stage{'inputs'} }\n";
 	print "Outputs: @{ $$stage{'outputs'} }\n";
 	print "Args: @{ $$stage{'args'} }\n";

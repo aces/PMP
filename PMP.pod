@@ -1,0 +1,9 @@
+=head1 NAME
+
+PMP - Poor Man's Pipeline; programmatic pipeline control
+
+=head1 SYNOPSIS
+
+use PMP;
+
+=head1 DESCRIPTION
