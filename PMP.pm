@@ -37,8 +37,13 @@ sub new {
     $self->{sortedStages} = [];
     # whether the sorted list of stages is up to date
     $self->{isSorted} = 0;
+    # whether the programs have been registered yet.
+    $self->{areRegistered} = 0;
     # list of stages to be executed in the next iteration
     $self->{toBeExecuted} = [];
+
+    # set the spawning options
+    MNI::Spawn::SetOptions( err_action => 'ignore' );
 
     # bring the class into existence
     bless($self, $class);
@@ -100,7 +105,10 @@ sub addStage {
     $self->{STAGES}{$$stage{'name'}} = $stage;
 
     # new stage was added - assume that they are now out of order
+    # and that there is now an unregistered program
     $self->{isSorted} = 0;
+    $self->{areRegistered} = 0;
+    
 }
 
 # created a sorted list of the various stages
@@ -179,14 +187,98 @@ sub updateStatus {
     return $#toBeExecuted + 1;
 }
 
+# register the programs
+sub registerPrograms {
+    my $self = shift;
+
+    my @programs;
+    # touch is used to update stage result files
+    push @programs, "touch"; 
+    # the first element of the args part of each stage should be the program;
+    foreach my $key ( keys %{ $self->{STAGES} } ) {
+	push @programs, $self->{STAGES}{$key}{'args'}[0];
+    }
+    RegisterPrograms(\@programs) or die "ERROR: could not register programs: $!\n";
+    $self->{areRegistered} = 1;
+}
+
 # run the next iteration
 sub run {
     my $self = shift;
+
+    # make sure the programs have all been registered
+    $self->registerPrograms() unless $self->{areRegistered};
     
     foreach my $key ( @{ $self->{toBeExecuted} } ) {
 	$self->execStage($key);
     }
     return $self->updateStatus();
+}
+
+# query whether a stage is finished
+sub isStageFinished {
+    my $self = shift;
+    my $stageName = shift;
+
+    my $returnVal = 0;
+
+    # check whether finished status flag is set
+    if ( $self->{STAGES}{$stageName}{'finished'} ) { 
+	$returnVal = 1;
+    }
+    elsif ( -f $self->getFinishedFile($stageName) ) {
+	# we have a failed file by the status in the hash was not set to finished
+	warn "Changing status of $stageName in pipe $self->{NAME} to finished\n";
+	$self->{STAGES}{$stageName}{'finished'} = 1;
+	$returnVal =  1;
+    }
+    return $returnVal;
+}
+
+# query whether a stage has failed
+sub isStageFailed {
+    my $self = shift;
+    my $stageName = shift;
+
+    my $returnVal = 0;
+
+    # check whether failed status flag is set
+    if ( $self->{STAGES}{$stageName}{'failed'} ) { 
+	$returnVal = 1;
+    }
+    elsif ( -f $self->getFailedFile($stageName) ) {
+	# we have a failed file by the status in the hash was not set to fail
+	warn "Changing status of $stageName in pipe $self->{NAME} to failed\n";
+	$self->{STAGES}{$stageName}{'failed'} = 1;
+	$returnVal =  1;
+    }
+    return $returnVal;
+}
+
+# reset the status of a stage to make it runnable
+sub resetStage {
+    my $self = shift;
+    my $stageName = shift;
+
+    if ( $self->isStageFinished($stageName) ) {
+	unlink $self->getFinishedFile($stageName);
+    }
+    elsif ( $self->isStageFailed($stageName) ) {
+	unlink $self->getFailedFile($stageName);
+    }
+
+    $self->{STAGES}{$stageName}{'failed'} = 0;
+    $self->{STAGES}{$stageName}{'finished'} = 0;
+    $self->{STAGES}{$stageName}{'running'} = 0;
+}
+
+# allow all failures to be rerun
+sub resetFailures {
+    my $self = shift;
+
+    foreach my $key ( keys %{ $self->{STAGES} } ) {
+	$self->resetStage($key) if $self->isStageFailed($key);
+    }
 }
 
 # update the status of a stage
@@ -197,8 +289,8 @@ sub updateStageStatus {
     my $runnable = 1;
 
     # check to make sure that it has neither finished nor failed
-    if ($self->{STAGES}{$stageName}{'finished'} ||
-	$self->{STAGES}{$stageName}{'failed'} ) {
+    if ( $self->isStageFinished($stageName) || 
+	 $self->isStageFailed($stageName) ) {
 	$runnable = 0;
     }
     # if a stage has no prereqs it is runnable
@@ -223,26 +315,83 @@ sub execStage {
     my $self = shift;
     my $stageName = shift;
 
-    # the status filenames
-    my $baseStatus = "$self->{STATUSDIR}/$self->{NAME}.${stageName}";
-    my $runningFile = "${baseStatus}.running";
-    my $finishedFile = "${baseStatus}.finished";
-    my $failedFile = "${baseStatus}.failed";
-    my $logFile = "${baseStatus}.log";
-
-    # run the stage in question
-    Spawn(["touch", $runningFile]);
+     # run the stage in question
+    $self->declareStageRunning($stageName);
     my $status = Spawn($self->{STAGES}{$stageName}{'args'}, 
-		       stdout => $logFile);
+		       stdout => $self->getLogFile($stageName));
     if ($status != 0) {
-	Spawn(["touch", $failedFile]);
-	$self->{STAGES}{$stageName}{'failed'} = 1;
+	$self->declareStageFailed($stageName);
     }
     else {
-	Spawn(["touch", $finishedFile]);
-	$self->{STAGES}{$stageName}{'finished'} = 1;
+	$self->declareStageFinished($stageName);
     }
+}
+
+# get the base filename for the various status files
+sub getStatusBase {
+    my $self = shift;
+    my $stageName = shift;
+    return "$self->{STATUSDIR}/$self->{NAME}.${stageName}";
+}
+
+sub getRunningFile {
+    my $self = shift;
+    my $stageName = shift;
+    return $self->getStatusBase($stageName) . ".running";
+}
+
+sub getFailedFile {
+    my $self = shift;
+    my $stageName = shift;
+    return $self->getStatusBase($stageName) . ".failed";
+}
+
+sub getFinishedFile {
+    my $self = shift;
+    my $stageName = shift;
+    return $self->getStatusBase($stageName) . ".finished";
+}
+
+sub getLogFile { 
+    my $self = shift;
+    my $stageName = shift;
+    return $self->getStatusBase($stageName) . ".log";
+}
+
+# designate a stage has running
+sub declareStageRunning {
+    my $self = shift;
+    my $stageName = shift;
+    
+    my $runningFile = $self->getRunningFile($stageName);
+    Spawn(["touch", $runningFile]);
+    $self->{STAGES}{$stageName}{'running'} = 1;
+}
+
+# designate a stage as having finished
+sub declareStageFinished {
+    my $self = shift;
+    my $stageName = shift;
+    
+    my $finishedFile = $self->getFinishedFile($stageName);
+    my $runningFile = $self->getRunningFile($stageName);
+    Spawn(["touch", $finishedFile]);
     unlink $runningFile;
+    $self->{STAGES}{$stageName}{'running'} = 0;
+    $self->{STAGES}{$stageName}{'finished'} = 1;
+}
+
+# designate a stage as having failed
+sub declareStageFailed {
+    my $self = shift;
+    my $stageName = shift;
+
+    my $failedFile = $self->getFailedFile($stageName);
+    my $runningFile = $self->getRunningFile($stageName);
+    Spawn(["touch", $failedFile]);
+    unlink $runningFile;
+    $self->{STAGES}{$stageName}{'running'} = 0;
+    $self->{STAGES}{$stageName}{'failed'} = 1;
 }
 
 # print the definition of a single stage
@@ -273,11 +422,11 @@ sub printStage {
 sub printStages {
     my $self = shift;
 
-    # TODO print the stages in some sensible order
+    # make sure stages are sorted
+    $self->sortStages() unless $self->{isSorted};
 
-    my @keys = keys %{ $self->{STAGES} };
-    print "Number of stages = $#keys\n\n";
-    foreach my $key ( @keys ) {
+    print "Number of stages = $#{ $self->{sortedStages} }\n\n";
+    foreach my $key ( @{ $self->{sortedStages} } ) {
 	$self->printStage($key);
     }
 }
