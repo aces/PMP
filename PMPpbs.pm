@@ -105,7 +105,11 @@ END
 
 open PIPE, "|qsub" or die "ERROR: could not open pipe to qsub: $!\n";
     print PIPE $pbsSub;
-    close PIPE or die "ERROR: could not close qsub pipe: $!\n";
+    if (! close PIPE ) {
+	warn "ERROR: could not close qsub pipe $self->{NAME}: $!\n";
+	warn "Continuing for now, but this pipe might have gone bad.\n";
+    }
+	
 }
 
 

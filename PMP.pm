@@ -223,12 +223,7 @@ sub createFilenameDotGraph {
     }
     print DOT "}\n";
     close DOT;
-    
-
 }
-	    
-
-
 
 # create a file that can be used by dot to generate a dependency graph
 sub createDotGraph {
@@ -420,7 +415,7 @@ sub isStageFinished {
     }
     elsif ( -f $self->getFinishedFile($stageName) ) {
 	# we have a failed file by the status in the hash was not set to finished
-	warn "Changing status of $stageName in pipe $self->{NAME} to finished\n";
+	print "Changing status of $stageName in pipe $self->{NAME} to finished\n";
 	$self->{STAGES}{$stageName}{'finished'} = 1;
 	$returnVal =  1;
     }
@@ -440,7 +435,7 @@ sub isStageRunning {
     }
     elsif ( -f $self->getRunningFile($stageName) ) {
 	# we have a running stage from the status files
-	warn "Changing status of $stageName in pipe $self->{NAME} to failed\n";
+	print "Changing status of $stageName in pipe $self->{NAME} to running\n";
 	$self->{STAGES}{$stageName}{'running'} = 1;
 	$returnVal =  1;
     }
@@ -460,7 +455,7 @@ sub isStageFailed {
     }
     elsif ( -f $self->getFailedFile($stageName) ) {
 	# we have a failed file by the status in the hash was not set to fail
-	warn "Changing status of $stageName in pipe $self->{NAME} to failed\n";
+	print "Changing status of $stageName in pipe $self->{NAME} to failed\n";
 	$self->{STAGES}{$stageName}{'failed'} = 1;
 	$returnVal =  1;
     }
