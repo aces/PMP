@@ -324,6 +324,12 @@ argument. The hash has the following components:
 The name of that particular stage. The name is what will be used to
 address this stage for later usage (such as dependency tracking).
 
+=item * label
+
+A description of this stage. Entirely optional, and is only used when
+generating dependency graphs. Some formatting codes are allowed,
+especially for newlines: use \\n.
+
 =item * inputs
 
 An array of the input filenames. The only use this array is currently

@@ -103,6 +103,12 @@ sub registerPrograms {
     @{ $self->{PIPES} }[0]->registerPrograms();
 }
 
+# make a dot dependency graph - will only do so for the first pipe
+sub createDotGraph {
+    my $self = shift;
+    my $filename = shift;
+    @{ $self->{PIPES} }[0]->createDotGraph($filename);
+}
 
 # print the stages - note that this will only print the stages from the 
 # first pipe under the assumption that the rest are the same

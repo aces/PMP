@@ -32,6 +32,20 @@ sub setHosts {
     $self->{pbsHosts} = $hosts;
 }
 
+# set the priority scheme
+sub setPriorityScheme {
+    my $self = shift;
+    my $scheme = shift;
+
+    # only one allowed so far: later-stages, which give priority to
+    # later stages over earlier stages.
+    if (! $scheme =~ /later-stages/ ) {
+	die "ERROR: illegal priority scheme $scheme\n";
+    }
+    $self->{pbsPriorityScheme} = $scheme;
+}
+    
+
 # overwrite the execStage method and use the PBS batch queueing system
 # to submit jobs
 sub execStage {
@@ -80,8 +94,15 @@ sub execStage {
 #PBS -j oe
 #PBS -o $logFile
 #PBS -l host=$hosts
-
 END
+
+    if (exists $self->{pbsPriorityScheme}) {
+	# error check for an admittedly unlikely condition
+	unless ($self->{STAGES}{$stageName}{'order'} > 1024 ||
+		$self->{STAGES}{$stageName}{'order'} < -1024) {
+	    $pbsSub .= "#PBS -p $self->{STAGES}{$stageName}{'order'}\n";
+	}
+    }
 
 $pbsSub .= "cd \$PBS_O_WORKDIR\n";
 

@@ -101,16 +101,19 @@ foreach my $filename (@filenames) {
     # add the various stages
     $pipeline->addStage(
 	{ name => "nuc",
+	  label => "Non Uniformity \\nCorrection",
 	  inputs => [$filename],
 	  outputs => [$nuc],
 	  args => ["nu_correct", $filename, $nuc] });
     $pipeline->addStage(
 	{ name => "total",
+	  label => "stereotaxic registration",
 	  inputs => [$filename],
 	  outputs => [$talTransform],
 	  args => ["mritotal", $filename, $talTransform] });
     $pipeline->addStage(
 	{ name => "final",
+	  label => "resampling",
 	  inputs => [$talTransform, $nuc],
 	  outputs => [$final],
 	  args => ["mincresample", "-like", $model, "-transform", 
@@ -118,6 +121,7 @@ foreach my $filename (@filenames) {
 	  prereqs => ["nuc", "total"] });
     $pipeline->addStage(
 	{ name => "cls",
+	  label => "classification",
 	  inputs => [$final],
 	  outputs => [$cls],
 	  args => ["classify_clean", "-clobber", "-clean_tags", $final, $cls],

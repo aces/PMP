@@ -237,12 +237,25 @@ sub createDotGraph {
     print DOT "digraph G {\n";
 
     foreach my $stage (@{ $self->{sortedStages} }) {
+	# dot doesn't like dashes.
+	my $dest = $stage;
+	$dest =~ s/-/_/g;
+
+	# add a descriptive label if it exists
+	if ( exists $self->{STAGES}{$stage}{'label'} ) {
+	    print DOT "$dest [shape=Mrecord, " .
+		"label=\"{$stage|$self->{STAGES}{$stage}{'label'}}\"]\n";
+	}
+	else {
+	    # keep the original label
+	    print DOT "$dest [label=$stage]\n";
+	}
+
+
 	foreach my $dep ( @{ $self->{STAGES}{$stage}{'prereqs'} } ) {
 	    my $source = $dep;
 	    # dot doesn't like dashes.
 	    $source =~ s/-/_/g;
-	    my $dest = $stage;
-	    $dest =~ s/-/_/g;
 	    print DOT "$source -> ${dest};\n";
 	}
     }
