@@ -1,6 +1,6 @@
 =head1 NAME
 
-PMPpbs - a subclass of PMP for batched processing.
+PMP::pbs - a subclass of PMP for batched processing.
 
 =head1 SYNOPSIS
 
@@ -15,8 +15,27 @@ installed on the system.
 
 =head1 OVERVIEW
 
-PMPpbs is used exactly like its superclass PMP. There are two
+PMP::pbs is used exactly like its superclass PMP. There are two
 additional methods, setQueue and setHosts, for setting the batch
 queue and the batch hosts respectively. In terms of implementation
-all that PMPpbs does is overwrite the execStage method of PMP. See
+all that PMP::pbs does is overwrite the execStage method of PMP. See
 the PMP documentation for all the gory details.
+
+=head1 METHODS
+
+=head2 setQueue
+
+Sets the batch queue to use (medium, short, or long).
+
+=head2 setHosts
+
+Sets the batch hosts to use (colon separated list, i.e. "yorick:bullcalf").
+
+=head2 setPriorityScheme
+
+Sets the job priority scheme to use. The only one currently
+implemented is "later-stages", which gives priority to stages further
+down the dependency list. This has the effect of trying to finish
+individual pipelines before starting on the next pipeline. The default
+is to use no ordering.
+

@@ -12,7 +12,7 @@ use MNI::MiscUtilities qw(shellquote);
 
 # the version number
 
-$PMP::VERSION = '0.6.1';
+$PMP::VERSION = '0.6.4';
 
 # the constructor
 sub new {

@@ -70,6 +70,31 @@ Takes a filename as an argument, and creates a dot graph description
 therein. One can then use the command line program dot to actually
 generate the graph.
 
+=head2 createFilenameDotGraph
+
+Takes a filename as an argument, and a substring as an optional second
+argument. Then creates a dot graph description in the filename; this
+graph contains each stage along with its output files. The substring,
+if provided, is removed from each filename (so the best use of it is
+to provide the base directory of all the files). Uses the first
+pipeline in the array to generate this graph.
+
+=head2 printPipelineStatus
+
+Takes a filename as an optional argument. If provided, prints the
+status of all pipelines in the Array to that file, otherwise to
+stout.
+
+=head2 registerPrograms
+
+Registers the programs of the first pipeline in the array, exiting if
+any program cannot be found in the current path.
+
+=head2 subsetToStage
+
+Takes a stagename as an argument, and subsets each pipeline to run
+from the first stage until the stagename provided as the argument.
+
 =head2 printStatusReport
 
 Takes a filename as an argument and prints a CSV separated status

@@ -4,184 +4,8 @@ PMP - Poor Man's Pipeline; programmatic pipeline control
 
 =head1 SYNOPSIS
 
-Below is a full example of an application using PMP. It is modelled
-on INSECT, which segments an MRI volume into white matter, grey
-matter, and spinal fluid
-
- #!/usr/bin/env perl
-
- # run standard insect using the PMP system
- # mostly meant as a test-bed for PMP
-
- use strict;
- use PMP::pbs;
- use PMP::Array;
- use PMP::PMP;
- use MNI::Startup;
- use MNI::PathUtilities qw(split_path);
- use MNI::FileUtilities qw(check_output_dirs check_output_path);
- use MNI::DataDir;
- use Getopt::Tabular;
-
- # globals
- my $clsDir = MNI::DataDir::dir("ICBM");
- my $model = "$clsDir/icbm_template_1.00mm.mnc";
-
- # arguments and their defaults
- my $usePBS = undef;
- my $pbsQueue = "long";
- my $pbsHosts = "yorick:bullcalf";
- my $command = "printStatus";
- my $reset = undef;
- my $sleepTime = 10;
-
- my @leftOverArgs;
-
- # argument handling
- my @argTbl = (
-     ["Pipeline options", "section"],
-     ["-pbs", "boolean", undef, \$usePBS,
-      "Use PBS for job submission."],
-     ["-queue", "string", 1, \$pbsQueue,
-      "Which PBS queue to use [short|medium|long]."],
-     ["-hosts", "string", 1, \$pbsHosts,
-      "Colon separated list of pbs hosts"],
-     ["-sleep-time", "integer", 1, \$sleepTime,
-      "Set the sleep time."],
-     ["Pipeline control", "section"],
-     ["-run", "const", "run", \$command,
-      "Run the pipeline."],
-     ["-status-from-files", "const", "statusFromFiles", \$command,
-      "Compute pipeline status from files"],
-     ["-print-stages", "const", "printStages", \$command,
-      "Print the pipeline stages."],
-     ["-print-status", "const", "printStatus", \$command,
-      "Print the status of each pipeline."],
-     ["-write-status-report", "const", "writeReport", \$command,
-      "Write a CSV separated status report."],
-     ["Stage Control", "section"],
-     ["-reset-all", "const", "resetAll", \$reset,
-      "Start the pipeline from the beginning."],
-     ["-reset-from", "string", 1, \$reset,
-      "Restart from the specified stage."]
- );
- GetOptions(\@argTbl, \@ARGV, \@leftOverArgs) or die "\n";
-
- my $usage = "$ProgramName basedir nativet1_1.mnc nativet1_n.mnc\n";
- my $pipebase = shift @leftOverArgs or die $usage;
- my @filenames = @leftOverArgs or die $usage;
-
- # an array to store the pipeline definitions for each subject
- my $pipes = PMP::Array->new();
-
- # set up the pipeline for each subject
- foreach my $filename (@filenames) {
-
-     # set the name based on splitting the input filename
-     my ($dir, $base, $ext) = split_path($filename, 'last', [qw(gz z Z)]);
-     my $basedir = "${pipebase}/${base}";
-     my $logdir = "${basedir}/logs";
-
-     # create the output directories if necessary
-     system("mkdir -p $logdir") unless ( -d $logdir );
-
-     # filename definitions
-     my $nuc = "${basedir}/${base}_nuc.mnc";
-     my $talTransform = "${basedir}/${base}_total.xfm";
-     my $final = "${basedir}/${base}_final.mnc";
-     my $cls = "${basedir}/${base}_cls.mnc";
-
-     # define the pipeline
-     my $pipeline;
-     if ($usePBS) {
-	 # use parallel execution
-	 $pipeline = PMP::pbs->new();
-	 $pipeline->setQueue($pbsQueue);
-	 $pipeline->setHosts($pbsHosts);
-     }
-     else {
-	 # use sequential execution
-	 $pipeline = PMP::PMP->new();
-     }
-
-     $pipeline->name("insect-${base}");
-     $pipeline->statusDir($logdir);
-
-     # turn off debug messaging for now
-     $pipeline->debug(0);
-
-     # add the various stages
-     $pipeline->addStage(
-	 { name => "nuc",
-	   label => "Non Uniformity \\nCorrection",
-	   inputs => [$filename],
-	   outputs => [$nuc],
-	   args => ["nu_correct", $filename, $nuc] });
-     $pipeline->addStage(
-	 { name => "total",
-	   label => "stereotaxic registration",
-	   inputs => [$filename],
-	   outputs => [$talTransform],
-	   args => ["mritotal", $filename, $talTransform] });
-     $pipeline->addStage(
-	 { name => "final",
-	   label => "resampling",
-	   inputs => [$talTransform, $nuc],
-	   outputs => [$final],
-	   args => ["mincresample", "-like", $model, "-transform", 
-		    $talTransform, $nuc, $final],
-	   prereqs => ["nuc", "total"] });
-     $pipeline->addStage(
-	 { name => "cls",
-	   label => "classification",
-	   inputs => [$final],
-	   outputs => [$cls],
-	   args => ["classify_clean", "-clobber", "-clean_tags", $final, $cls],
-	   prereqs => ["final"] });
-
-     # rerun any failures from a previous run of this subjects pipe
-     $pipeline->resetFailures();
-     # assume that files considered to be running are faulty
-     #$pipeline->resetRunning();
-     # compute the status of each stage
-     $pipeline->updateStatus();
-
-     # create a dependency graph that can be turned into a pretty picture.
-     $pipeline->createDotGraph("test.dot");
-
-     # now add this pipe to our happy array of pipes
-     $pipes->addPipe($pipeline);
- }
-
- # if any stages were to be reset, do so now
- if ($reset) {
-     if ($reset eq "resetAll") {
-	 $pipes->resetAll();
-     }
-     else {
-	 $pipes->resetFromStage($reset);
-     }
- }
-
- # now run whatever it is that the user wanted done
- if ($command eq "printStatus" ) {
-     $pipes->printUnfinished();
- }
- elsif ($command eq "statusFromFiles") {
-     $pipes->updateFromFiles();
- }
- elsif ($command eq "printStages") {
-     $pipes->printStages();
- }
- elsif ($command eq "run") { 
-     $pipes->run();
- }
- elsif ($command eq "writeReport") {
-     $pipes->printStatusReport("status-report.csv");
- }
- else {
-     print "huh? Grunkle little gnu, grunkle\n";
- }
+The best synposis is found in the tutorial:
+http://wiki.bic.mni.mcgill.ca/index.php/PoorMansPipeline
 
 =head1 DESCRIPTION
 
@@ -200,7 +24,7 @@ Tracking of dependencies between the different commands
 
 =item *
 
-Parallel execution mode by using a batch queueing system
+Parallel execution mode by using one of two batch queueing system
 
 =item *
 
@@ -242,7 +66,7 @@ access, and a curse in that it makes an application much less portable.
 
 =head1 COMPONENTS
 
-PMP currently consists of three different classes:
+PMP currently consists of four different classes:
 
 =over 4
 
@@ -256,7 +80,13 @@ dependencies for a single subject.
 
 A subclass of PMP in which the command execution uses the PBS batch
 queueing system rather than the MNI::Spawn interface. Otherwise
-should be entirely exchangeable with PMP
+should be entirely exchangeable with PMP::PMP.
+
+=item * PMP::sge
+
+A subclass of PMP in which the command execution uses the SGE (Sun
+Grid Engine) batch queueing system. Otherwise should be entirely
+exchangeable with PMP::PMP.
 
 =item * PMP::Array
 
@@ -274,10 +104,10 @@ Import the necessary components through the use statement, e.g.:
 
     use PMP::PMP;
     use PMP::pbs;
+    use PMP::sge;
     use PMP::Array;
 
-Where usually only PMP or PMPpbs are needed, not both. The pipearray
-is also declared at this early point:
+The pipearray is also declared at this early point:
 
     my $pipes = PMP::Array->new();
 
@@ -290,6 +120,7 @@ pipeline is initialised like so:
 
     my $pipeline = PMP::PMP->new(); # sequential version
     my $pipeline = PMP::pbs->new(); # parallel version using PBS
+    my $pipeline = PMP::sge->new(); # parallel version using SGE
 
 Then certain globals for that pipeline are set, such as
 
@@ -304,6 +135,7 @@ method, an example of which is:
 
     $pipeline->addStage(
 	{ name => "total",
+      label => "this does something interesting",
 	  inputs => [$filename],
 	  outputs => [$talTransform],
 	  args => ["mritotal", $filename, $talTransform] });
@@ -375,8 +207,9 @@ that this stage has no prerequisites.
 
 An optional boolean variable (0 or 1) which specifies whether
 shellquoting should be used in this stage. Only makes a difference for
-PMPpbs at this moment. By default shell-quoting is turned off; this
-flag has to be set for each stage which should use shell-quoating.
+PMP::pbs and PMP::sge at this moment. By default shell-quoting is
+turned off; this flag has to be set for each stage which should use
+shell-quoting.
 
 =back
 
@@ -384,6 +217,7 @@ An example of adding a stage would be:
 
     $pipeline->addStage(
 	{ name => "cls",
+      label => "does something else that is interesting",
 	  inputs => [$final],
 	  outputs => [$cls],
 	  args => ["classify_clean", "-clobber", "-clean_tags", 
@@ -518,6 +352,29 @@ stage.
 =head2 printStages
 
 Prints all stages in the pipeline.
+
+=head2 getPipelineStatus
+
+Gets the pipeline's status, returning one of four possible strings:
+
+=over 4
+
+=item * "not started" This pipeline has not yet been started
+
+=item * running This pipeline is running; also returns a list of the
+stages that are currently running.
+
+=item * failed This pipeline has failed; also returns a list of the
+stages that have failed.
+
+=item * finished This pipeline has finished.
+
+=back
+
+=head2 subsetToStage
+
+Takes a stage name as an argument, and creates a subset of stages
+running from the beginning of the pipeline up to that stage.
 
 =head1 SEMI-PRIVATE METHODS
 

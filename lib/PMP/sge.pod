@@ -1,0 +1,23 @@
+=head1 NAME
+
+PMP::sge - a subclass of PMP for Sun Grid Engine batched processing.
+
+=head1 SYNOPSIS
+
+See the PMP documentation for a cogent synopsis.
+
+=head1 DESCRIPTION
+
+A subclass of PMP, it uses the Sun Grid Engine to submit its
+jobs. The advantage of course is that stages that do not depend on
+each other can be executed in parallel. Naturally requires SGE to be
+installed on the system.
+
+=head1 OVERVIEW
+
+PMP::sge is used exactly like its superclass PMP. In terms of implementation
+all that PMP::sge does is overwrite the execStage method of PMP. See
+the PMP documentation for all the gory details. Unle PMP::pbs, there
+are no extraneous methods provided yet.
+
+
