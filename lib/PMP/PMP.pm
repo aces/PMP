@@ -703,7 +703,7 @@ sub updateStageStatus {
     if ($self->{runAllStages} == 1 || $self->{stagesSubset}{$stageName} ) {
 	print "Updating status of $self->{NAME} : $stageName\n" 
 	    if $self->{DEBUG};
-	$ runnable = 1;
+	$runnable = 1;
 
 	# check to make sure that it has neither finished nor failed
 	if ( $self->isStageFinished($stageName) || 
