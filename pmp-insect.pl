@@ -139,6 +139,9 @@ foreach my $filename (@filenames) {
     # create a dependency graph that can be turned into a pretty picture.
     $pipeline->createDotGraph("test.dot");
 
+    # print the current pipe status
+    print "Status: " . $pipeline->getPipelineStatus() . "\n";
+
     # now add this pipe to our happy array of pipes
     $pipes->addPipe($pipeline);
 }
@@ -156,6 +159,8 @@ if ($reset) {
 # now run whatever it is that the user wanted done
 if ($command eq "printStatus" ) {
     $pipes->printUnfinished();
+    $pipes->printPipelineStatus();
+
 }
 elsif ($command eq "statusFromFiles") {
     $pipes->updateFromFiles();

@@ -110,6 +110,31 @@ sub createDotGraph {
     @{ $self->{PIPES} }[0]->createDotGraph($filename);
 }
 
+# print the status of all pipelines. Optional second argument is a
+# filename, in which case the status is printed to file rather than to
+# stdout
+sub printPipelineStatus {
+    my $self = shift;
+    my $filename = undef;
+    if (@_) { $filename = shift; }
+
+    if ($filename) {
+	open REPORT, ">$filename" or die "ERROR opening $filename: $!\n";
+    }
+
+    foreach my $pipeline ( @{ $self->{PIPES} } ) {
+	my $status = $pipeline->getPipelineStatus();
+	if ($filename) { 
+	    print REPORT "$status\n";
+	}
+	else {
+	    print "$status\n";
+	}
+    }
+
+    if ($filename) { close REPORT; }
+}
+
 # create a CVS file reporting on status of all stages
 sub printStatusReport {
     my $self = shift;

@@ -274,6 +274,52 @@ sub createDotGraph {
     close DOT;
 }
 
+# gets the pipeline's status. Messages come in these flavours:
+#   not started
+#   running (including list of stages currently running)
+#   failed  (inlcuding list of stages that have failed)
+#   finished
+sub getPipelineStatus {
+  my $self = shift;
+
+  # make sure that stages are sorted
+  $self->sortStages() unless $self->{isSorted};
+
+  # variables
+  my @runningStages;
+  my @failedStages;
+  my @finishedStages;
+  my @notStartedStages;
+  my $overallStatus = "$self->{NAME}: Not Started";
+
+  # sort each stage into one of the four possible arrays
+  foreach my $stage ( @{ $self->{sortedStages} } ) {
+    if ($self->{STAGES}{$stage}{failed}) {
+      push @failedStages, $stage;
+    }
+    elsif ($self->{STAGES}{$stage}{running}) {
+      push @runningStages, $stage;
+    }
+    elsif ($self->{STAGES}{$stage}{finished}) {
+      push @finishedStages, $stage;
+    }
+    else {
+      push @notStartedStages, $stage;
+    }
+  }
+
+  if (@runningStages && !@failedStages) {
+    $overallStatus = "$self->{NAME}: Running: @runningStages";
+  }
+  elsif (@failedStages) {
+    $overallStatus = "$self->{NAME}: Failed: @failedStages";
+  }
+  elsif (@finishedStages) {
+    $overallStatus = "$self->{NAME}: Finished";
+  }
+  return $overallStatus;
+}
+
 # prints, in CSV format, the header row for a status report. Takes a
 # filehandle reference as the argument.
 sub printStatusReportHeader {
