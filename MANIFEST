@@ -1,0 +1,13 @@
+BUGS
+ChangeLog
+lib/PMP/Array.pm
+lib/PMP/Array.pod
+lib/PMP/pbs.pm
+lib/PMP/pbs.pod
+lib/PMP/PMP.pm
+lib/PMP/PMP.pod
+Makefile.PL
+MANIFEST			This list of files
+README
+t/pmp_test.t
+META.yml                                 Module meta-data (added by MakeMaker)

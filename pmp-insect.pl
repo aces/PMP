@@ -4,9 +4,9 @@
 # mostly meant as a test-bed for PMP
 
 use strict;
-use PMPpbs;
-use PMParray;
-use PMP;
+use PMP::pbs;
+use PMP::Array;
+use PMP::PMP;
 use MNI::Startup;
 use MNI::PathUtilities qw(split_path);
 use MNI::FileUtilities qw(check_output_dirs check_output_path);
@@ -62,7 +62,7 @@ my $pipebase = shift @leftOverArgs or die $usage;
 my @filenames = @leftOverArgs or die $usage;
 
 # an array to store the pipeline definitions for each subject
-my $pipes = PMParray->new();
+my $pipes = PMP::Array->new();
 
 # set up the pipeline for each subject
 foreach my $filename (@filenames) {
@@ -85,13 +85,13 @@ foreach my $filename (@filenames) {
     my $pipeline;
     if ($usePBS) {
 	# use parallel execution
-	$pipeline = PMPpbs->new();
+	$pipeline = PMP::pbs->new();
 	$pipeline->setQueue($pbsQueue);
 	$pipeline->setHosts($pbsHosts);
     }
     else {
 	# use sequential execution
-	$pipeline = PMP->new();
+	$pipeline = PMP::PMP->new();
     }
 
     $pipeline->name("insect-${base}");

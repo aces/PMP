@@ -1,3 +1,10 @@
+2004-08-01	Jason Lerch	<jason@bic.mni.mcgill.ca>
+
+	* added Makefile.PL
+	* moved lots of files around to make it compatible with the usual
+	installation procedure.
+	* renamed files so that they install as, for example, PMP::array
+
 2004-07-31 	Jason Lerch	<jason@bic.mni.mcgill.ca>
 
 	* added methods to print a CSV separated status file. Both PMP.pm

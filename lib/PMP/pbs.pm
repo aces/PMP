@@ -3,8 +3,8 @@
 #
 # Almost everything taken from PBS except for the execStage method.
 
-package PMPpbs;
-use PMP;
+package PMP::pbs;
+use PMP::PMP;
 use MNI::MiscUtilities qw(shellquote);
 
 @ISA = ("PMP");

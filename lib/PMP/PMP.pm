@@ -4,11 +4,15 @@
 # Some basic pipelining that is elegant to use and not dependent on
 # too many modules or databases.
 
-package PMP;
+package PMP::PMP;
 use strict;
 use MNI::Spawn;
 use MNI::Startup;
 use MNI::MiscUtilities qw(shellquote);
+
+# the version number
+
+$PMP::VERSION = '0.4';
 
 # the constructor
 sub new {

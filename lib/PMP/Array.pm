@@ -3,9 +3,9 @@
 #
 # Basic pipelining utility
 
-package PMParray;
+package PMP::Array;
 use strict;
-use PMP;
+use PMP::PMP;
 
 # the constructor
 sub new {

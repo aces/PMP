@@ -7,164 +7,180 @@ PMP - Poor Man's Pipeline; programmatic pipeline control
 Below is a full example of an application using PMP. It is modelled
 on INSECT, which segments an MRI volume into white matter, grey
 matter, and spinal fluid
+#!/usr/bin/env perl
 
-    use strict;
-    use PMPpbs;
-    use PMParray;
-    use PMP;
-    use MNI::Startup;
-    use MNI::PathUtilities qw(split_path);
-    use MNI::FileUtilities qw(check_output_dirs check_output_path);
-    use MNI::DataDir;
-    use Getopt::Tabular;
+# run standard insect using the PMP system
+# mostly meant as a test-bed for PMP
 
-    # globals
-    my $clsDir = MNI::DataDir::dir("ICBM");
-    my $model = "$clsDir/icbm_template_1.00mm.mnc";
+use strict;
+use PMP::pbs;
+use PMP::Array;
+use PMP::PMP;
+use MNI::Startup;
+use MNI::PathUtilities qw(split_path);
+use MNI::FileUtilities qw(check_output_dirs check_output_path);
+use MNI::DataDir;
+use Getopt::Tabular;
 
-    # arguments and their defaults
-    my $usePBS = undef;
-    my $pbsQueue = "long";
-    my $pbsHosts = "yorick:bullcalf";
-    my $command = "printStatus";
-    my $reset = undef;
-    my $sleepTime = 10;
+# globals
+my $clsDir = MNI::DataDir::dir("ICBM");
+my $model = "$clsDir/icbm_template_1.00mm.mnc";
 
-    my @leftOverArgs;
+# arguments and their defaults
+my $usePBS = undef;
+my $pbsQueue = "long";
+my $pbsHosts = "yorick:bullcalf";
+my $command = "printStatus";
+my $reset = undef;
+my $sleepTime = 10;
 
-    # argument handling
-    my @argTbl = (
-	["Pipeline options", "section"],
-	["-pbs", "boolean", undef, \$usePBS,
-	 "Use PBS for job submission."],
-	["-queue", "string", 1, \$pbsQueue,
-	 "Which PBS queue to use [short|medium|long]."],
-	["-hosts", "string", 1, \$pbsHosts,
-	 "Colon separated list of pbs hosts"],
-	["-sleep-time", "integer", 1, \$sleepTime,
-	 "Set the sleep time."],
-	["Pipeline control", "section"],
-	["-run", "const", "run", \$command,
-	 "Run the pipeline."],
-	["-status-from-files", "const", "statusFromFiles", \$command,
-	 "Compute pipeline status from files"],
-	["-print-stages", "const", "printStages", \$command,
-	 "Print the pipeline stages."],
-	["-print-status", "const", "printStatus", \$command,
-	 "Print the status of each pipeline."],
-	["Stage Control", "section"],
-	["-reset-all", "const", "resetAll", \$reset,
-	 "Start the pipeline from the beginning."],
-	["-reset-from", "string", 1, \$reset,
-	 "Restart from the specified stage."]
-    );
-    GetOptions(\@argTbl, \@ARGV, \@leftOverArgs) or die "\n";
+my @leftOverArgs;
 
-    my $usage = "$ProgramName basedir nativet1_1.mnc nativet1_n.mnc\n";
-    my $pipebase = shift @leftOverArgs or die $usage;
-    my @filenames = @leftOverArgs or die $usage;
+# argument handling
+my @argTbl = (
+    ["Pipeline options", "section"],
+    ["-pbs", "boolean", undef, \$usePBS,
+     "Use PBS for job submission."],
+    ["-queue", "string", 1, \$pbsQueue,
+     "Which PBS queue to use [short|medium|long]."],
+    ["-hosts", "string", 1, \$pbsHosts,
+     "Colon separated list of pbs hosts"],
+    ["-sleep-time", "integer", 1, \$sleepTime,
+     "Set the sleep time."],
+    ["Pipeline control", "section"],
+    ["-run", "const", "run", \$command,
+     "Run the pipeline."],
+    ["-status-from-files", "const", "statusFromFiles", \$command,
+     "Compute pipeline status from files"],
+    ["-print-stages", "const", "printStages", \$command,
+     "Print the pipeline stages."],
+    ["-print-status", "const", "printStatus", \$command,
+     "Print the status of each pipeline."],
+    ["-write-status-report", "const", "writeReport", \$command,
+     "Write a CSV separated status report."],
+    ["Stage Control", "section"],
+    ["-reset-all", "const", "resetAll", \$reset,
+     "Start the pipeline from the beginning."],
+    ["-reset-from", "string", 1, \$reset,
+     "Restart from the specified stage."]
+);
+GetOptions(\@argTbl, \@ARGV, \@leftOverArgs) or die "\n";
 
-    # an array to store the pipeline definitions for each subject
-    my $pipes = PMParray->new();
+my $usage = "$ProgramName basedir nativet1_1.mnc nativet1_n.mnc\n";
+my $pipebase = shift @leftOverArgs or die $usage;
+my @filenames = @leftOverArgs or die $usage;
 
-    # set up the pipeline for each subject
-    foreach my $filename (@filenames) {
+# an array to store the pipeline definitions for each subject
+my $pipes = PMP::Array->new();
 
-	# set the name based on splitting the input filename
-	my ($dir, $base, $ext) = split_path($filename, 'last', [qw(gz z Z)]);
-	my $basedir = "${pipebase}/${base}";
-	my $logdir = "${basedir}/logs";
+# set up the pipeline for each subject
+foreach my $filename (@filenames) {
 
-	# create the output directories if necessary
-	system("mkdir -p $logdir") unless ( -d $logdir );
+    # set the name based on splitting the input filename
+    my ($dir, $base, $ext) = split_path($filename, 'last', [qw(gz z Z)]);
+    my $basedir = "${pipebase}/${base}";
+    my $logdir = "${basedir}/logs";
 
-	# filename definitions
-	my $nuc = "${basedir}/${base}_nuc.mnc";
-	my $talTransform = "${basedir}/${base}_total.xfm";
-	my $final = "${basedir}/${base}_final.mnc";
-	my $cls = "${basedir}/${base}_cls.mnc";
+    # create the output directories if necessary
+    system("mkdir -p $logdir") unless ( -d $logdir );
+    
+    # filename definitions
+    my $nuc = "${basedir}/${base}_nuc.mnc";
+    my $talTransform = "${basedir}/${base}_total.xfm";
+    my $final = "${basedir}/${base}_final.mnc";
+    my $cls = "${basedir}/${base}_cls.mnc";
 
-	# define the pipeline
-	my $pipeline;
-	if ($usePBS) {
-	    # use parallel execution
-	    $pipeline = PMPpbs->new();
-	    $pipeline->setQueue($pbsQueue);
-	    $pipeline->setHosts($pbsHosts);
-	}
-	else {
-	    # use sequential execution
-	    $pipeline = PMP->new();
-	}
-
-	$pipeline->name("insect-${base}");
-	$pipeline->statusDir($logdir);
-
-	# turn off debug messaging for now
-	$pipeline->debug(0);
-
-	# add the various stages
-	$pipeline->addStage(
-	    { name => "nuc",
-	      inputs => [$filename],
-	      outputs => [$nuc],
-	      args => ["nu_correct", $filename, $nuc] });
-	$pipeline->addStage(
-	    { name => "total",
-	      inputs => [$filename],
-	      outputs => [$talTransform],
-	      args => ["mritotal", $filename, $talTransform] });
-	$pipeline->addStage(
-	    { name => "final",
-	      inputs => [$talTransform, $nuc],
-	      outputs => [$final],
-	      args => ["mincresample", "-like", $model, "-transform", 
-		       $talTransform, $nuc, $final],
-	      prereqs => ["nuc", "total"] });
-	$pipeline->addStage(
-	    { name => "cls",
-	      inputs => [$final],
-	      outputs => [$cls],
-	      args => ["classify_clean", "-clobber", "-clean_tags", $final, $cls],
-	      prereqs => ["final"] });
-
-	# rerun any failures from a previous run of this subjects pipe
-	$pipeline->resetFailures();
-	# assume that files considered to be running are faulty
-	$pipeline->resetRunning();
-	# compute the status of each stage
-	$pipeline->updateStatus();
-
-	# now add this pipe to our happy array of pipes
-	$pipes->addPipe($pipeline);
-    }
-
-    # if any stages were to be reset, do so now
-    if ($reset) {
-	if ($reset eq "resetAll") {
-	    $pipes->resetAll();
-	}
-	else {
-	    $pipes->resetFromStage($reset);
-	}
-    }
-
-    # now run whatever it is that the user wanted done
-    if ($command eq "printStatus" ) {
-	$pipes->printUnfinished();
-    }
-    elsif ($command eq "statusFromFiles") {
-	$pipes->updateFromFiles();
-    }
-    elsif ($command eq "printStages") {
-	$pipes->printStages();
-    }
-    elsif ($command eq "run") { 
-	$pipes->run();
+    # define the pipeline
+    my $pipeline;
+    if ($usePBS) {
+	# use parallel execution
+	$pipeline = PMP::pbs->new();
+	$pipeline->setQueue($pbsQueue);
+	$pipeline->setHosts($pbsHosts);
     }
     else {
-	print "huh? Grunkle little gnu, grunkle\n";
+	# use sequential execution
+	$pipeline = PMP::PMP->new();
     }
+
+    $pipeline->name("insect-${base}");
+    $pipeline->statusDir($logdir);
+
+    # turn off debug messaging for now
+    $pipeline->debug(0);
+
+    # add the various stages
+    $pipeline->addStage(
+	{ name => "nuc",
+	  label => "Non Uniformity \\nCorrection",
+	  inputs => [$filename],
+	  outputs => [$nuc],
+	  args => ["nu_correct", $filename, $nuc] });
+    $pipeline->addStage(
+	{ name => "total",
+	  label => "stereotaxic registration",
+	  inputs => [$filename],
+	  outputs => [$talTransform],
+	  args => ["mritotal", $filename, $talTransform] });
+    $pipeline->addStage(
+	{ name => "final",
+	  label => "resampling",
+	  inputs => [$talTransform, $nuc],
+	  outputs => [$final],
+	  args => ["mincresample", "-like", $model, "-transform", 
+		   $talTransform, $nuc, $final],
+	  prereqs => ["nuc", "total"] });
+    $pipeline->addStage(
+	{ name => "cls",
+	  label => "classification",
+	  inputs => [$final],
+	  outputs => [$cls],
+	  args => ["classify_clean", "-clobber", "-clean_tags", $final, $cls],
+	  prereqs => ["final"] });
+    
+    # rerun any failures from a previous run of this subjects pipe
+    $pipeline->resetFailures();
+    # assume that files considered to be running are faulty
+    #$pipeline->resetRunning();
+    # compute the status of each stage
+    $pipeline->updateStatus();
+    
+    # create a dependency graph that can be turned into a pretty picture.
+    $pipeline->createDotGraph("test.dot");
+
+    # now add this pipe to our happy array of pipes
+    $pipes->addPipe($pipeline);
+}
+
+# if any stages were to be reset, do so now
+if ($reset) {
+    if ($reset eq "resetAll") {
+	$pipes->resetAll();
+    }
+    else {
+	$pipes->resetFromStage($reset);
+    }
+}
+
+# now run whatever it is that the user wanted done
+if ($command eq "printStatus" ) {
+    $pipes->printUnfinished();
+}
+elsif ($command eq "statusFromFiles") {
+    $pipes->updateFromFiles();
+}
+elsif ($command eq "printStages") {
+    $pipes->printStages();
+}
+elsif ($command eq "run") { 
+    $pipes->run();
+}
+elsif ($command eq "writeReport") {
+    $pipes->printStatusReport("status-report.csv");
+}
+else {
+    print "huh? Grunkle little gnu, grunkle\n";
+}
 
 =head1 DESCRIPTION
 
@@ -229,19 +245,19 @@ PMP currently consists of three different classes:
 
 =over 4
 
-=item * PMP
+=item * PMP::PMP
 
 The main class which is used to configure a pipeline. A pipeline is,
 for the purposes of PMP, defined as a the set of commands and their
 dependencies for a single subject.
 
-=item * PMPpbs
+=item * PMP::pbs
 
 A subclass of PMP in which the command execution uses the PBS batch
 queueing system rather than the MNI::Spawn interface. Otherwise
 should be entirely exchangeable with PMP
 
-=item * PMParray
+=item * PMP::Array
 
 Designed to deal with a set of pipelines. Most pipeline runs will
 consist of multiple subjects executing the same set of commands -
@@ -255,14 +271,14 @@ The usual way of setting up a PMP pipeline is the following:
 
 Import the necessary components through the use statement, e.g.:
 
-    use PMP;
-    use PMPpbs;
-    use PMParray;
+    use PMP::PMP;
+    use PMP::pbs;
+    use PMP::Array;
 
 Where usually only PMP or PMPpbs are needed, not both. The pipearray
 is also declared at this early point:
 
-    my $pipes = PMParray->new();
+    my $pipes = PMP::Array->new();
 
 Then comes any argument processing that your application might have
 to deal with as well as setting up some global variables that will
@@ -271,8 +287,8 @@ definitions of each individual pipeline, usually placed inside a
 foreach loop which processes each subject. Inside this loop the
 pipeline is initialised like so:
 
-    my $pipeline = PMP->new(); # sequential version
-    my $pipeline = PMPpbs->new(); # parallel version using PBS
+    my $pipeline = PMP::PMP->new(); # sequential version
+    my $pipeline = PMP::pbs->new(); # parallel version using PBS
 
 Then certain globals for that pipeline are set, such as
 

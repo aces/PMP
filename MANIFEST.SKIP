@@ -1,0 +1,3 @@
+~$      # backup files
+CVS     # CVS versioning files
+pmp-insect\.pl # file not meant to be distributed
