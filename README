@@ -15,6 +15,10 @@ which ones are safe to run.
 * automation of startup tasks in PBSarray.pm
 * announcement to BIC community.
 
+milestone2_5: intermediate tag between milestone 2 and 3. After this
+correct installation procedures will be used and therefore files have
+to be moved around considerably.
+
 milestone2: addition of lots of documentation. Announced to a small
 group of people for feedback on the design.
 
