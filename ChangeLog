@@ -1,6 +1,9 @@
 2004-10-07	Jason Lerch	<jason@bic.mni.mcgill.ca>
 
 	* added missing methods to the various POD files.
+	* fixed bug in resetFromStage - the regex in grep were incorrect
+	when the stagename was a partial version of another stage,
+	i.e. "pve" and "pve_curvature".
 
 2004-10-01	Jason Lerch	<jason@bic.mni.mcgill.ca>
 

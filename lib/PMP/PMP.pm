@@ -663,13 +663,14 @@ sub resetFromStage {
 
     while ($numAdded) { #keep going until no more stages are added
 	$numAdded = 0;
-	foreach my $stage ( keys %{ $self->{STAGES} } ) {
+	foreach my $stage ( @{ $self->{sortedStages} } ) {
 	    foreach my $prereq ( @stagesToBeReset ) {
-		if (grep(/$prereq/, @{ $self->{STAGES}{$stage}{'prereqs'} })) {
-		    unless (grep(/$stage/, @stagesToBeReset)) {
+		if (grep(/^$prereq$/, @{ $self->{STAGES}{$stage}{'prereqs'} })) {
+		    unless (grep(/^$stage$/, @stagesToBeReset)) {
 			# a stage in the to be reset list is a prereq for this
 			# stage - reset it too.
 			push @stagesToBeReset, $stage; 
+            print "adding $stage to reset list\n";
 			$numAdded++;
 		    }
 		}
