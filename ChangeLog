@@ -1,3 +1,9 @@
+2004-09-17      Jason Lerch     <jason@bic.mni.mcgill.ca>
+
+	* now allows for non-existent prereqs as well as empty prereq arrays.
+	* some extra tests added
+	* version bumped to 0.5
+	
 2004-08-16	Jason Lerch	<jason@bic.mni.mcgill.ca>
 
 	* added ability to use only a subset of stages. Not the greatest

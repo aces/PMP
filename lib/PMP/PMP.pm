@@ -12,7 +12,7 @@ use MNI::MiscUtilities qw(shellquote);
 
 # the version number
 
-$PMP::VERSION = '0.4';
+$PMP::VERSION = '0.5';
 
 # the constructor
 sub new {
@@ -406,6 +406,7 @@ sub sortStages {
     my $currentInsertion = 0;
     my $insertionLevel = 0;
 
+    print "in sort stages\n";
     # stage 1: find all the stages with no prereqs at all
     foreach my $key ( @keys ) {
 	if (! exists $self->{STAGES}{$key}{'prereqs'} ) {
@@ -428,10 +429,14 @@ sub sortStages {
 	    foreach my $stage ( @{ $self->{STAGES}{$key}{'prereqs'} } ) {
 		#print "Prereq $stage of $key\n";
 		#print "blah: " . grep(/$stage/, @insertedStages);
-		if (! grep( /$stage/, @insertedStages ) ) {
+		if (! grep( /$stage/, @insertedStages ) and
+		   grep( /$stage/, @keys) ) {
 		    #print "prereq not in list\n";
 		    $validInsertion = 0;
 		    last;
+		}
+		elsif (! grep( /$stage/, @keys) ) {
+		    warn "Prereq: $stage of stage $key does not exist - ignoring\n";
 		}
 	    }
 	    if ($validInsertion == 1) { 
@@ -698,7 +703,7 @@ sub updateStageStatus {
 
     my $runnable = 0;
 
-
+    print "In status for stage: $stageName\n";
     # check to make sure that this stage is in the subset of stages to be run
     if ($self->{runAllStages} == 1 || $self->{stagesSubset}{$stageName} ) {
 	print "Updating status of $self->{NAME} : $stageName\n" 
@@ -736,6 +741,7 @@ sub updateStageStatus {
 	}
     }
     print "Runnable status: $runnable\n\n" if $self->{DEBUG};
+
     return $runnable;
 }
 
