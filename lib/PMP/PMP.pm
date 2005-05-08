@@ -223,7 +223,7 @@ sub createFilenameDotGraph {
 
     print DOT "digraph G {\n";
 
-    foreach my $stage (@{ $self->{sortedStages} }) {
+    foreach my $stage (@{ $self->{STAGES} }) {
         # dot doesn't like dashes.
         my $dest = $stage;
         $dest =~ s/-/_/g;
@@ -252,13 +252,13 @@ sub createDotGraph {
     my $self = shift;
     my $filename = shift;
 
-    $self->sortStages() unless $self->{isSorted};
+    #$self->sortStages() unless $self->{isSorted};
 
     open DOT, ">$filename" or die "ERROR opening dot file $filename: $!\n";
 
     print DOT "digraph G {\n";
 
-    foreach my $stage (@{ $self->{sortedStages} }) {
+    foreach my $stage (keys %{ $self->{STAGES} }) {
 	# dot doesn't like dashes.
 	my $dest = $stage;
 	$dest =~ s/-/_/g;
@@ -401,7 +401,7 @@ sub printDependencyTree {
 # created a sorted list of the various stages
 sub sortStages {
     my $self = shift;
-
+    
     # reinitialize the array to empty
     delete $self->{sortedStages};
     delete $self->{dependencyTree};
@@ -413,7 +413,6 @@ sub sortStages {
     my $currentInsertion = 0;
     my $insertionLevel = 0;
 
-    #print "in sort stages\n";
     # stage 1: find all the stages with no prereqs at all
     foreach my $key ( @keys ) {
 	if (! exists $self->{STAGES}{$key}{'prereqs'} or (! defined $self->{STAGES}{$key}{'prereqs'}[0])) {
@@ -432,14 +431,14 @@ sub sortStages {
 	$insertionLevel++;
 	foreach my $key ( @uninsertedStages ) {
 	    my $validInsertion = 1;
-	    #print "Now in stage $key\n";
 	    foreach my $stage ( @{ $self->{STAGES}{$key}{'prereqs'} } ) {
 		print "Prereq $stage of $key\n" if $self->{DEBUG};
 		print "return of grep: " . grep(/$stage/, @insertedStages) 
-            if $self->{DEBUG};
+		    if $self->{DEBUG};
 		if (defined $stage and ! grep( /^$stage$/, @insertedStages ) and
 		    grep( /^$stage$/, @keys) ) {
-		    print "prereq $stage for $key not in list\n" if $self->{DEBUG};
+		    print "prereq $stage for $key not in list\n" 
+			if $self->{DEBUG};
 		    $validInsertion = 0;
 		    last;
 		}
@@ -450,7 +449,6 @@ sub sortStages {
 	    if ($validInsertion == 1) { 
 		push @insertedStages, $key;
 		push @{ $dependencyTree[$insertionLevel] }, $key;
-		#print "inserted: $key\n";
 	    }
 	    else {
 		push @tmp, $key;
