@@ -5,6 +5,7 @@
 
 use strict;
 use PMP::pbs;
+use PMP::sge;
 use PMP::Array;
 use PMP::PMP;
 use MNI::Startup;
@@ -15,29 +16,37 @@ use Getopt::Tabular;
 
 # globals
 my $clsDir = MNI::DataDir::dir("ICBM");
+my $autoregDir = MNI::DataDir::dir("mni_autoreg");
+my $regModel = "icbm_avg_152_t1_tal_lin_symmetric";
 my $model = "$clsDir/icbm_template_1.00mm.mnc";
 
 # arguments and their defaults
-my $usePBS = undef;
+my $PMPtype = "spawn";
 my $pbsQueue = "long";
 my $pbsHosts = "yorick:bullcalf";
 my $command = "printStatus";
 my $reset = undef;
 my $sleepTime = 10;
+my $runPipeTests = undef;
 
 my @leftOverArgs;
 
 # argument handling
 my @argTbl = (
-    ["Pipeline options", "section"],
-    ["-pbs", "boolean", undef, \$usePBS,
-     "Use PBS for job submission."],
+    ["Execution control", "section"],
+    ["-spawn", "const", "spawn", \$PMPtype,
+     "Use the perl system interface to spawn jobs [default]"],
+    ["-sge", "const", "sge", \$PMPtype,
+     "Use SGE to spawn jobs"],
+    ["-pbs", "const", "pbs", \$PMPtype,
+     "Use PBS to spawn jobs"],
     ["-queue", "string", 1, \$pbsQueue,
      "Which PBS queue to use [short|medium|long]."],
     ["-hosts", "string", 1, \$pbsHosts,
-     "Colon separated list of pbs hosts"],
+     "Colon separated list of PBS hosts"],
     ["-sleep-time", "integer", 1, \$sleepTime,
      "Set the sleep time."],
+
     ["Pipeline control", "section"],
     ["-run", "const", "run", \$command,
      "Run the pipeline."],
@@ -49,11 +58,16 @@ my @argTbl = (
      "Print the status of each pipeline."],
     ["-write-status-report", "const", "writeReport", \$command,
      "Write a CSV separated status report."],
+
     ["Stage Control", "section"],
     ["-reset-all", "const", "resetAll", \$reset,
      "Start the pipeline from the beginning."],
     ["-reset-from", "string", 1, \$reset,
-     "Restart from the specified stage."]
+     "Restart from the specified stage."],
+
+    ["Pipeline Tests", "section"],
+    ["-run-tests|-no-tests", "boolean", undef, \$runPipeTests,
+     "Creates averages of all cls files for testing purposes"],
 );
 GetOptions(\@argTbl, \@ARGV, \@leftOverArgs) or die "\n";
 
@@ -83,15 +97,19 @@ foreach my $filename (@filenames) {
 
     # define the pipeline
     my $pipeline;
-    if ($usePBS) {
+    if ($PMPtype eq "pbs") {
       # use parallel execution
       $pipeline = PMP::pbs->new();
       $pipeline->setQueue($pbsQueue);
       $pipeline->setHosts($pbsHosts);
+      $pipeline->setPriorityScheme("later-stages");
+
     }
-    else {
-	# use sequential execution
-	$pipeline = PMP::PMP->new();
+    elsif ($PMPtype eq "sge") {
+        $pipeline = PMP::sge->new();
+    }
+    elsif ($PMPtype eq "spawn") {
+        $pipeline = PMP::PMP->new();
     }
 
     $pipeline->name("insect-${base}");
@@ -106,19 +124,20 @@ foreach my $filename (@filenames) {
 	  label => "Non Uniformity \\nCorrection",
 	  inputs => [$filename],
 	  outputs => [$nuc],
-	  args => ["nu_correct", $filename, $nuc] });
+	  args => ["nu_correct", "-clobber", $filename, $nuc] });
     $pipeline->addStage(
 	{ name => "total",
 	  label => "stereotaxic registration",
 	  inputs => [$filename],
 	  outputs => [$talTransform],
-	  args => ["mritotal", $filename, $talTransform] });
+	  args => ["mritotal", "-clobber", "-modeldir", $autoregDir, "-model", 
+               $regModel, $filename, $talTransform] });
     $pipeline->addStage(
 	{ name => "final",
 	  label => "resampling",
 	  inputs => [$talTransform, $nuc],
 	  outputs => [$final],
-	  args => ["mincresample", "-like", $model, "-transform", 
+	  args => ["mincresample", "-clobber", "-like", $model, "-transform", 
 		   $talTransform, $nuc, $final],
 	  prereqs => ["nuc", "total"] });
     $pipeline->addStage(
@@ -137,7 +156,7 @@ foreach my $filename (@filenames) {
     $pipeline->updateStatus();
     
     # create a dependency graph that can be turned into a pretty picture.
-    $pipeline->createDotGraph("test.dot");
+    #$pipeline->createDotGraph("test.dot");
 
     # print the current pipe status
     print "Status: " . $pipeline->getPipelineStatus() . "\n";
@@ -178,6 +197,21 @@ else {
     print "huh? Grunkle little gnu, grunkle\n";
 }
 
+# ugly test code
+if ($runPipeTests) {
+    my $cls_files;
+    foreach my $p ( @{ $pipes->{PIPES} }) {
+        if (! $p->{STAGES}{cls}{finished} ) {
+            die "ABORTING TESTS: at least one cls stage did not finish\n";
+        }
+        $cls_files .= $p->{STAGES}{cls}{outputs}[0];
+        $cls_files .= " ";
+    }
+    #print "CLS FILES: $cls_files\n";
+    #print "NUM PIPES: $#{$pipes->{PIPES}}\n";
+    my $sdfile = "pipe-test-gm-sd.mnc";
+    my $avgfile = "pipe-test-gm-avg.mnc";
+    system("mincaverage -clobber -binarize -binvalue 2 -sdfile $sdfile $cls_files $avgfile");
 
-
+}
 
