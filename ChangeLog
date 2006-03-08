@@ -1,3 +1,7 @@
+2006-03-08      Claude Lepage   <claude@bic.mni.mcgill.ca>
+	* incorporated Sebastien's change for sge queue system
+	* bumped version to 0.6.6
+
 2004-10-08	Jason Lerch	<jason@bic.mni.mcgill.ca>
 
 	* bumped version to 0.6.5
