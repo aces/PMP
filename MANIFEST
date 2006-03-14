@@ -6,6 +6,8 @@ lib/PMP/pbs.pm
 lib/PMP/pbs.pod
 lib/PMP/PMP.pm
 lib/PMP/PMP.pod
+lib/PMP/sge.pm
+lib/PMP/sge.pod
 Makefile.PL
 MANIFEST			This list of files
 README
