@@ -77,6 +77,11 @@ The main class which is used to configure a pipeline. A pipeline is,
 for the purposes of PMP, defined as a the set of commands and their
 dependencies for a single subject.
 
+=item * PMP::spawn
+
+A subclass of PMP in which the command execution uses the MNI::Spawn
+batch system. Otherwise should be entirely exchangeable with PMP::PMP.
+
 =item * PMP::pbs
 
 A subclass of PMP in which the command execution uses the PBS batch
@@ -104,6 +109,7 @@ The usual way of setting up a PMP pipeline is the following:
 Import the necessary components through the use statement, e.g.:
 
     use PMP::PMP;
+    use PMP::spawn;
     use PMP::pbs;
     use PMP::sge;
     use PMP::Array;
@@ -119,9 +125,10 @@ definitions of each individual pipeline, usually placed inside a
 foreach loop which processes each subject. Inside this loop the
 pipeline is initialised like so:
 
-    my $pipeline = PMP::PMP->new(); # sequential version
+    my $pipeline = PMP::PMP->new(); # sequential version (default spawn)
     my $pipeline = PMP::pbs->new(); # parallel version using PBS
     my $pipeline = PMP::sge->new(); # parallel version using SGE
+    my $pipeline = PMP::spawn->new(); # sequential version using MNI::Spawn
 
 Then certain globals for that pipeline are set, such as
 

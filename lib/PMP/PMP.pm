@@ -12,7 +12,7 @@ use MNI::MiscUtilities qw(shellquote);
 
 # the version number
 
-$PMP::VERSION = '0.6.6';
+$PMP::VERSION = '0.6.7';
 
 # the constructor
 sub new {
@@ -757,23 +757,6 @@ sub updateStageStatus {
     return $runnable;
 }
 
-# exec a stage through the Spawn interface
-sub execStage {
-    my $self = shift;
-    my $stageName = shift;
-
-     # run the stage in question
-    $self->declareStageRunning($stageName);
-    my $status = Spawn($self->{STAGES}{$stageName}{'args'}, 
-		       stdout => $self->getLogFile($stageName));
-    if ($status != 0) {
-	$self->declareStageFailed($stageName);
-    }
-    else {
-	$self->declareStageFinished($stageName);
-    }
-}
-
 # get the base filename for the various status files
 sub getStatusBase {
     my $self = shift;
@@ -813,6 +796,15 @@ sub declareStageRunning {
     my $runningFile = $self->getRunningFile($stageName);
     Spawn(["touch", $runningFile]);
     $self->{STAGES}{$stageName}{'running'} = 1;
+    $self->{STAGES}{$stageName}{'finished'} = 0;
+    $self->{STAGES}{$stageName}{'failed'} = 0;
+
+    if ( -f $self->getLogFile($stageName) ) {
+      unlink $self->getLogFile($stageName);
+    }
+    if ( -f $self->getFailedFile($stageName) ) {
+      unlink $self->getFailedFile($stageName);
+    }
 }
 
 # designate a stage as having finished

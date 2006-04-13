@@ -1,3 +1,10 @@
+2006-04-13      Claude Lepage   <claude@bic.mni.mcgill.ca>
+        * (attempt to) fix shellquote for sge and pbs for args with quotes
+        * add automatic dependencies on inputs[] and outputs[] in addition to prereqs[]
+        * remove .log file on a restart so that ouptut is not appended
+        * create own module for spawn.pm
+        * bumped version to 0.6.7
+
 2006-03-08      Claude Lepage   <claude@bic.mni.mcgill.ca>
 	* incorporated Sebastien's change for sge queue system
 	* bumped version to 0.6.6

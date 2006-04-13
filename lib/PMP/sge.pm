@@ -64,13 +64,13 @@ END
 
     # define the command string, shellquoting if so desired
     my $cmdstring = "@{ $self->{STAGES}{$stageName}{'args'} } ";
-    $cmdstring = shellquote(@{ $self->{STAGES}{$stageName}{'args'} }) 
-	if ($self->{STAGES}{$stageName}{'shellquote'});
+    my $echostring = shellquote(@{ $self->{STAGES}{$stageName}{'args'} });
 
     $sgeSub .= <<END;
 
+
 echo "Working directory: " `pwd`
-echo \'$cmdstring\'
+echo $echostring
 $cmdstring
 if [ "\$?" == "0" ] 
 then 
@@ -79,7 +79,7 @@ else
   touch $failedFile
 fi
 
-rm $runningFile
+rm -f $runningFile
 
 END
 
