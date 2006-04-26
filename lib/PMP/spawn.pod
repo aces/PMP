@@ -1,0 +1,22 @@
+=head1 NAME
+
+PMP::spawn - a subclass of PMP for MNI::Spawn batch processing.
+
+=head1 SYNOPSIS
+
+See the PMP documentation for a cogent synopsis.
+
+=head1 DESCRIPTION
+
+A subclass of PMP, it uses MNI::Spawn to submit its jobs.
+The advantage of course is that stages that do not depend on
+each other can be executed in parallel.
+
+=head1 OVERVIEW
+
+PMP::spawn is used exactly like its superclass PMP. In terms of implementation
+all that PMP::spawn does is call the execStage method in PMP::spawn. See
+the PMP documentation for all the gory details. Unlike PMP::pbs and
+PMP::sge, there are no extraneous methods provided yet.
+
+

@@ -20,6 +20,19 @@ sub setQueue {
     $self->{sgeQueue} = $Q;
 }
 
+# set the priority scheme
+sub setPriorityScheme {
+    my $self = shift;
+    my $scheme = shift;
+
+    # only one allowed so far: later-stages, which give priority to
+    # later stages over earlier stages.
+    if (! $scheme =~ /later-stages/ ) {
+        die "ERROR: illegal priority scheme $scheme\n";
+    }
+    $self->{sgePriorityScheme} = $scheme;
+}
+
 # overwrite the execStage method and use SGE qsub command to submit jobs
 sub execStage {
     my $self = shift;
@@ -53,24 +66,30 @@ sub execStage {
 #\$ -o $logFile -j y
 #\$ -N $jobName
 #\$ -q $Q
-
-cd \$SGE_O_WORKDIR
 END
+
+    if (exists $self->{sgePriorityScheme}) {
+        # error check for an admittedly unlikely condition
+        unless ($self->{STAGES}{$stageName}{'order'} > 1024 ||
+                $self->{STAGES}{$stageName}{'order'} < -1023) {
+            $sgeSub .= "#\$ -p $self->{STAGES}{$stageName}{'order'}\n";
+        }
+    }
+
+    $sgeSub .= "cd \$SGE_O_WORKDIR\n";
 
 # now add the environment to the submission command
     foreach my $env ( keys %ENV ) {
 	$sgeSub .= "export ${env}=\"$ENV{$env}\"\n";
     }
 
-    # define the command string, shellquoting if so desired
-    my $cmdstring = "@{ $self->{STAGES}{$stageName}{'args'} } ";
-    my $echostring = shellquote(@{ $self->{STAGES}{$stageName}{'args'} });
+    # define the command string
+    my $cmdstring = shellquote(@{ $self->{STAGES}{$stageName}{'args'} });
 
     $sgeSub .= <<END;
 
-
-echo "Working directory: " `pwd`
-echo $echostring
+echo "Start running on: " `uname -s -n -r` " at " `date`
+echo "$cmdstring"
 $cmdstring
 if [ "\$?" == "0" ] 
 then 
@@ -83,7 +102,7 @@ rm -f $runningFile
 
 END
 
-#open PIPE, ">/data/kidnet/kidnet1/tempdump/$jobName.sh";
+#open PIPE, ">/tmp/claude/test.sh";
 #print PIPE $sgeSub;
 #close PIPE;
 
@@ -98,4 +117,4 @@ END
 }
 
 1;
-	
+

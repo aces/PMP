@@ -30,8 +30,22 @@ sub new {
 sub addPipe {
     my $self = shift;
     my $pipeline = shift;
+    my $unique = 1;
 
-    push @{ $self->{PIPES} }, $pipeline;
+    # Test that pipe does not already exist.
+    foreach my $pipe ( @{ $self->{PIPES} } ) {
+        if( $pipe->{NAME} eq $pipeline->{NAME} ) {
+            $unique = 0;
+            last;
+        }
+    }
+    if( $unique ) {
+      push @{ $self->{PIPES} }, $pipeline;
+      print "Added pipe $pipeline->{NAME}\n";
+    } else {
+      print "Ignored duplicate pipe $pipeline->{NAME}\n";
+    }
+    return $unique;
 }
 
 # get or set the sleep time

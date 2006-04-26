@@ -107,8 +107,7 @@ END
 $pbsSub .= "cd \$PBS_O_WORKDIR\n";
 
     # define the command string, shellquoting it if so desired
-    my $cmdstring = "@{ $self->{STAGES}{$stageName}{'args'} } ";
-    my $echostring = shellquote(@{ $self->{STAGES}{$stageName}{'args'} });
+    my $cmdstring = shellquote(@{ $self->{STAGES}{$stageName}{'args'} });
 
 # now add the environment to the submission command
     foreach my $env ( keys %ENV ) {
@@ -117,8 +116,9 @@ $pbsSub .= "cd \$PBS_O_WORKDIR\n";
 
     # and the actual commands
     $pbsSub .= <<END;
-echo "Working directory: " `pwd`
-echo $echostring
+
+echo "Start running on: " `uname -s -n -r` " at " `date`
+echo "$cmdstring"
 $cmdstring
 if [ "\$?" == "0" ] 
 then 

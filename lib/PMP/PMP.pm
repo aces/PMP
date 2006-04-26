@@ -12,7 +12,7 @@ use MNI::MiscUtilities qw(shellquote);
 
 # the version number
 
-$PMP::VERSION = '0.6.7';
+$PMP::VERSION = '0.6.8';
 
 # the constructor
 sub new {
@@ -55,7 +55,7 @@ sub new {
     $self->{stageSubset} = {};
 
     # set the spawning options
-    MNI::Spawn::SetOptions( err_action => 'ignore' );
+    # MNI::Spawn::SetOptions( err_action => 'ignore' );
 
     # bring the class into existence
     bless($self, $class);
@@ -122,9 +122,9 @@ sub addStage {
 
     $$stage{'order'} = $self->{CURRENT};
     $self->{CURRENT}++;
-    $$stage{'started'} = 0;
     $$stage{'finished'} = 0;
     $$stage{'failed'} = 0;
+    $$stage{'running'} = 0;
     $$stage{'runnable'} = 0;
 
     # add it to the stage list of the pipeline
@@ -165,7 +165,10 @@ sub statusFromFiles {
     my $self = shift;
 
     foreach my $stage ( keys %{ $self->{STAGES} } ) {
-	$self->stageStatusFromFiles($stage);
+	my $finished = $self->stageStatusFromFiles($stage);
+        if( $finished && ( -f $self->getFinishedFile($stage) ) ) {
+          $self->{STAGES}{$stage}{'finished'} = 1;
+        }
     }
 }
 
@@ -205,7 +208,6 @@ sub stageStatusFromFiles {
 	    }
 	}
     }
-    $self->declareStageFinished($stageName) if $finished;
     return $finished;
 }
 
@@ -286,10 +288,11 @@ sub createDotGraph {
 }
 
 # gets the pipeline's status. Messages come in these flavours:
-#   not started
 #   running (including list of stages currently running)
-#   failed  (inlcuding list of stages that have failed)
-#   finished
+#   queued  (including list of stages that are submitted but not yet running)
+#   failed  (including list of stages that have failed)
+#   finished (including list of stages that are finished)
+
 sub getPipelineStatus {
   my $self = shift;
 
@@ -298,35 +301,37 @@ sub getPipelineStatus {
 
   # variables
   my @runningStages;
+  my @queuedStages;
   my @failedStages;
   my @finishedStages;
-  my @notStartedStages;
   my $overallStatus = "$self->{NAME}: Not Started";
 
   # sort each stage into one of the four possible arrays
   foreach my $stage ( @{ $self->{sortedStages} } ) {
     if ($self->{STAGES}{$stage}{failed}) {
       push @failedStages, $stage;
-    }
-    elsif ($self->{STAGES}{$stage}{running}) {
-      push @runningStages, $stage;
-    }
-    elsif ($self->{STAGES}{$stage}{finished}) {
+    } elsif ($self->{STAGES}{$stage}{finished}) {
       push @finishedStages, $stage;
-    }
-    else {
-      push @notStartedStages, $stage;
+    } elsif ($self->{STAGES}{$stage}{running}) {
+      if( -f $self->getLogFile($stage) ) {
+        push @runningStages, $stage;
+      } else {
+        push @queuedStages, $stage;
+      }
     }
   }
 
-  if (@runningStages && !@failedStages) {
+  if (@runningStages) {
     $overallStatus = "$self->{NAME}: Running: @runningStages";
+  }
+  elsif (@queuedStages) {
+    $overallStatus = "$self->{NAME}: Queued: @queuedStages";
   }
   elsif (@failedStages) {
     $overallStatus = "$self->{NAME}: Failed: @failedStages";
   }
   elsif (@finishedStages) {
-    $overallStatus = "$self->{NAME}: Finished";
+    $overallStatus = "$self->{NAME}: Finished: @finishedStages";
   }
   return $overallStatus;
 }
@@ -374,7 +379,11 @@ sub printStatusReport {
 	    print $fileHandle "finished,";
 	}
 	elsif ($self->{STAGES}{$stage}{running}) {
-	    print $fileHandle "running,";
+            if( -f $self->getLogFile($stage) ) {
+	        print $fileHandle "running,";
+            } else {
+	        print $fileHandle "queued,";
+            }
 	}
 	else {
 	    print $fileHandle "not started,";
@@ -486,8 +495,8 @@ sub updateStatus {
     # sort stages if necessary
     $self->sortStages() unless $self->{isSorted};
 
-#    foreach my $key ( keys %{ $self->{STAGES} } ) {
     foreach my $key ( @{ $self->{sortedStages} } ) {
+
 	if ($self->updateStageStatus($key)) {
 	    push @toBeExecuted, $key;
 	}
@@ -521,6 +530,7 @@ sub registerPrograms {
     foreach my $key ( keys %{ $self->{STAGES} } ) {
 	push @programs, $self->{STAGES}{$key}{'args'}[0];
     }
+    # only beast requiring MNI::Spawn in this file
     RegisterPrograms(\@programs) or die "ERROR: could not register programs: $!\n";
     $self->{areRegistered} = 1;
 }
@@ -590,7 +600,7 @@ sub isStageFailed {
 	$returnVal = 1;
     }
     elsif ( -f $self->getFailedFile($stageName) ) {
-	# we have a failed file by the status in the hash was not set to fail
+	# we have a failed file but the status in the hash was not set to fail
 	print "Changing status of $stageName in pipe $self->{NAME} to failed\n";
 	$self->{STAGES}{$stageName}{'failed'} = 1;
 	$returnVal =  1;
@@ -603,13 +613,23 @@ sub resetStage {
     my $self = shift;
     my $stageName = shift;
 
-    if ( $self->isStageFinished($stageName) ) {
+    # The following statuses should be exclusive, but
+    # sometimes there can be a mess when there is a 
+    # crash (.running file not deleted, for example).
+    # So be mean and wipe out everything. Don't ask
+    # questions. Remove .log, .finished, .failed, 
+    # .running on a stage reset.
+
+    if( -f $self->getLogFile($stageName) ) {
+	unlink $self->getLogFile($stageName);
+    }
+    if( -f $self->getFinishedFile($stageName) ) {
 	unlink $self->getFinishedFile($stageName);
     }
-    elsif ( $self->isStageFailed($stageName) ) {
+    if( -f $self->getFailedFile($stageName) ) {
 	unlink $self->getFailedFile($stageName);
     }
-    elsif ( $self->isStageRunning($stageName) ) {
+    if( -f $self->getRunningFile($stageName) ) {
 	unlink $self->getRunningFile($stageName);
     }
 
@@ -619,12 +639,56 @@ sub resetStage {
 }
 
 # allow all failures to be rerun
+# Extend the concept of failure to include:
+#    - stage has failed
+#    - stage is apparently running but has finished (kill it!)
+#
 sub resetFailures {
     my $self = shift;
 
-    foreach my $key ( keys %{ $self->{STAGES} } ) {
-	$self->resetStage($key) if $self->isStageFailed($key);
+    # make sure stages are sorted
+    $self->sortStages() unless $self->{isSorted};
+
+    foreach my $key (@{ $self->{sortedStages} }) {
+        if( $self->isStageFailed($key) || 
+            ( $self->isStageFinished($key) && $self->isStageRunning($key) ) ) {
+            print "\n$self->{NAME}: Failed stage $key\n";
+	    $self->resetFromStage($key);
+        }
     }
+
+    # Some validation on the prereqs (this does not really belong here but
+    # it does the job anyway).
+    my $prereq_error = 0;
+    foreach my $stage (@{ $self->{sortedStages} }) {
+	foreach my $key ( @{ $self->{STAGES}{$stage}{'prereqs'} } ) {
+            if ( !grep(/$key/, @{$self->{sortedStages}}) ) {
+                print "$self->{NAME}: Prereq $key of stage $stage is not a valid pipeline stage.\n";
+                $prereq_error++;
+            }
+        }
+    }
+    if( $prereq_error ) {
+        die "Sorry dude, I must quit.\n";
+    }
+
+    # Reset all finished stages which depend on an unfinished/failed stage as a prereq.
+    foreach my $stage (@{ $self->{sortedStages} }) {
+        if ( $self->isStageFinished($stage) ) {
+            my $ready = 1;
+	    # check if this stage is really finished based on its prereqs
+	    foreach my $key ( @{ $self->{STAGES}{$stage}{'prereqs'} } ) {
+                if ( !$self->isStageFinished($key) ) {
+                    print "$self->{NAME}: Prereq $key of stage $stage is not finished.\n";
+		    $ready = 0;
+                }
+	    }
+            if( !$ready ) {
+	        $self->resetStage($stage);
+            }
+        }
+    }
+
 }
 
 # creates a subset of stages up to a specified end-point
@@ -704,55 +768,94 @@ sub resetRunning {
 }
 
 # update the status of a stage
+#   - look at files .failed, .finished, .running to reset
+#     the flags
+#   - determine if the stage is ready to run based on its
+#     prereqs
+# Note: execStage() called before this touches the files,
+#       but does not update the internal flags after execution
+#       (unknown for sge and pbs).
+#
 sub updateStageStatus {
     my $self = shift;
     my $stageName = shift;
 
     my $runnable = 0;
 
-    # print "In status for stage: $stageName\n";
     # check to make sure that this stage is in the subset of stages to be run
     if ($self->{runAllStages} == 1 || $self->{stagesSubset}{$stageName} ) {
-	print "Updating status of $self->{NAME} : $stageName\n" 
-	    if $self->{DEBUG};
+
 	$runnable = 1;
-    print "Num prereqs: $#{ $self->{STAGES}{$stageName}{'prereqs'}}\n" 
-        if ($self->{DEBUG});
+
+        # Check if job just terminated normally. Reset flag if done.
+        # (file .running does not exist but running flag is still set,
+        # and .failed or .finished exists)
+        if ( $self->{STAGES}{$stageName}{'running'} &&
+             ( ! -f $self->getRunningFile($stageName) ) && 
+             ( -f $self->getFailedFile($stageName) ||
+               -f $self->getFinishedFile($stageName) ) ) {
+	    $runnable = 0;
+	    $self->{STAGES}{$stageName}{'running'} = 0;
+
+            # Make sure all outputs have been created for a finished stage.
+            if( -f $self->getFinishedFile($stageName) ) {
+                foreach my $file (@{ $self->{STAGES}{$stageName}{'inputs'} }) {
+	            if (! -e $file) {
+                        print "Stage $stageName finished but output $file has not been created.\n";
+                        $self->printStage($stageName);
+                        print "Check your configuration for stage inputs and prereqs.\n";
+                        die "Sorry dude, I must quit.\n";
+                    }
+                }
+            }
+        }
 
 	# check to make sure that it has neither finished nor failed
-	if ( $self->isStageFinished($stageName) || 
-	     $self->isStageFailed($stageName) ) {
-	    print "Finished or failed\n" if $self->{DEBUG};
-	    $runnable = 0;
-	}
-	# check whether a stage is running
-	elsif ( $self->isStageRunning($stageName) ) {
-	    print "Running\n" if $self->{DEBUG};
+	if ( $self->isStageFailed($stageName) ) {
+            $runnable = 0;
+	    $self->{STAGES}{$stageName}{'running'} = 0;
+	    $self->{STAGES}{$stageName}{'finished'} = 0;
+        } elsif ( $self->isStageFinished($stageName) ) {
+            $runnable = 0;
+	    $self->{STAGES}{$stageName}{'running'} = 0;
+	} elsif ( $self->isStageRunning($stageName) ) {
+            # check whether a stage is running
 	    $self->{haveRunningStages} = 1;
 	    $runnable = 0;
-	}
-	# if a stage has no prereqs it is runnable
-	elsif (! exists $self->{STAGES}{$stageName}{'prereqs'} or
-		  (!defined $self->{STAGES}{$stageName}{'prereqs'}[0]) or
-	      $#{ $self->{STAGES}{$stageName}{'prereqs'}} == -1 ) {
-	    print "Has no prereqs\n" if $self->{DEBUG};
-
-	    $self->{STAGES}{$stageName}{'runnable'} = 1;
-	}
-	# same if all the prereqs are finished 
-	else { 
+	} elsif (! exists $self->{STAGES}{$stageName}{'prereqs'} or
+                (!defined $self->{STAGES}{$stageName}{'prereqs'}[0] ) or
+                $#{ $self->{STAGES}{$stageName}{'prereqs'}} == -1 ) {
+	    # if a stage has no prereqs it is runnable
+	    $runnable = 1;
+	} else { 
+	    # check if all the prereqs are finished 
 	    foreach my $stage ( @{ $self->{STAGES}{$stageName}{'prereqs'} } ) {
-            if (grep(/$stage/, @{$self->{sortedStages}}) and
-                $self->{STAGES}{$stage}{'finished'} == 0) {
-		    print "Prereq not finished\n" if $self->{DEBUG};
+                if (grep(/$stage/, @{$self->{sortedStages}}) and
+                    $self->{STAGES}{$stage}{'finished'} == 0) {
 		    $runnable = 0;
 		    last;
 		}
 	    }
-	    $self->{STAGES}{$stageName}{'runnable'} = $runnable;
 	}
+
+        # Make sure all inputs exist if all prereqs are satisfied.
+        if( $runnable ) {
+            foreach my $file (@{ $self->{STAGES}{$stageName}{'inputs'} }) {
+	        if (! -e $file) {
+	            # input file does not exist
+	            $runnable = 0;
+                    print "A conflict has been found with the specification of the \n";
+                    print "inputs and the prereqs in this stage:\n";
+                    $self->printStage($stageName);
+                    print "All prereqs are finished but input $file does not exist.\n";
+                    die "Sorry dude, I must quit.\n";
+	            last;
+	        }
+	    }
+	    $self->{STAGES}{$stageName}{'runnable'} = $runnable;
+        }
+
     }
-    print "Runnable status: $runnable\n\n" if $self->{DEBUG};
 
     return $runnable;
 }
@@ -794,17 +897,9 @@ sub declareStageRunning {
     my $stageName = shift;
     
     my $runningFile = $self->getRunningFile($stageName);
-    Spawn(["touch", $runningFile]);
+    system( "touch $runningFile" );
     $self->{STAGES}{$stageName}{'running'} = 1;
-    $self->{STAGES}{$stageName}{'finished'} = 0;
-    $self->{STAGES}{$stageName}{'failed'} = 0;
-
-    if ( -f $self->getLogFile($stageName) ) {
-      unlink $self->getLogFile($stageName);
-    }
-    if ( -f $self->getFailedFile($stageName) ) {
-      unlink $self->getFailedFile($stageName);
-    }
+    print "Changing status of $stageName in pipe $self->{NAME} to running\n";
 }
 
 # designate a stage as having finished
@@ -813,9 +908,15 @@ sub declareStageFinished {
     my $stageName = shift;
     
     my $finishedFile = $self->getFinishedFile($stageName);
+    if( ! -f $finishedFile ) {
+      system( "touch $finishedFile" );
+    }
+
     my $runningFile = $self->getRunningFile($stageName);
-    Spawn(["touch", $finishedFile]);
-    unlink $runningFile;
+    if( -f $runningFile ) {
+      unlink $runningFile;
+    }
+
     $self->{STAGES}{$stageName}{'running'} = 0;
     $self->{STAGES}{$stageName}{'finished'} = 1;
 }
@@ -826,9 +927,13 @@ sub declareStageFailed {
     my $stageName = shift;
 
     my $failedFile = $self->getFailedFile($stageName);
+    system( "touch $failedFile" );
+
     my $runningFile = $self->getRunningFile($stageName);
-    Spawn(["touch", $failedFile]);
-    unlink $runningFile;
+    if( -f $runningFile ) {
+      unlink $runningFile;
+    }
+
     $self->{STAGES}{$stageName}{'running'} = 0;
     $self->{STAGES}{$stageName}{'failed'} = 1;
 }
@@ -849,11 +954,22 @@ sub printStage {
 	print "Args: $cmdstring\n";
 	print "Prereqs: @{ $$stage{'prereqs'} }\n" 
 	    if exists $$stage{'prereqs'};
-	print "Has started\n" if $$stage{'started'};
-	print "Has finished\n" if $$stage{'finished'};
-	print "Is ready to run\n" if $$stage{'runnable'};
-	print "Not in subset\n" unless ($self->{runAllStages} == 1 || 
-					$self->{stagesSubset}{$stageName});
+        print "Status: ";
+        if( $$stage{'finished'} ) {
+            print "finished\n";
+        } elsif( $$stage{'failed'} ) {
+            print "failed\n";
+        } elsif( $$stage{'running'} ) {
+            if( -f $self->getLogFile($stageName) ) {
+	        print "running\n";
+            } else {
+	        print "queued\n";
+            }
+        } elsif( !( $self->{runAllStages} == 1 || $self->{stagesSubset}{$stageName} ) ) {
+            print "not in subset\n";
+        } else {
+            print "not processed\n";
+        }
 	print "\n";
     }
     else {
