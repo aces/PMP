@@ -15,10 +15,6 @@ use strict;
 sub setQueue {
     my $self = shift;
     my $Q = shift;
-
-    if (! ( $Q =~ /short/ || $Q =~ /medium/ || $Q =~ /long/ ) ) {
-	die "ERROR: illegal Q $Q - has to be either short, medium, or long\n";
-    }
     $self->{pbsQueue} = $Q;
 }
 
@@ -52,18 +48,6 @@ sub execStage {
     my $self = shift;
     my $stageName = shift;
 
-    # get the pipe queue - use long as default
-    my $Q = "long";
-    if (exists $self->{pbsQueue}) {
-	$Q = $self->{pbsQueue};
-    }
-
-    # get the pipe hosts
-    my $hosts = "bullcalf:yorick";
-    if (exists $self->{pbsHosts}) {
-	$hosts = $self->{pbsHosts};
-    }
-
     # set the job name
     my $jobName = "$self->{NAME}:$stageName";
     $jobName =~ s/;/_/g;
@@ -86,15 +70,23 @@ sub execStage {
     my $pbsSub = <<END;
 
 #!/bin/sh
-#PBS -q $Q
 #PBS -N $jobName
 # send mail on crash
 #PBS -m a
 # join STDERR and STDOUT
 #PBS -j oe
 #PBS -o $logFile
-#PBS -l host=$hosts
 END
+
+    # get the pipe queue
+    if (exists $self->{pbsQueue}) {
+	$pbsSub .= "#PBS -q $self->{pbsQueue}\n";
+    }
+
+    # get the pipe hosts
+    if (exists $self->{pbsHosts}) {
+	$pbsSub .= "#PBS -l host=$self->{pbsHosts}\n";
+    }
 
     if (exists $self->{pbsPriorityScheme}) {
 	# error check for an admittedly unlikely condition
@@ -104,15 +96,15 @@ END
 	}
     }
 
-$pbsSub .= "cd \$PBS_O_WORKDIR\n";
-
-    # define the command string, shellquoting it if so desired
-    my $cmdstring = shellquote(@{ $self->{STAGES}{$stageName}{'args'} });
+    $pbsSub .= "cd \$PBS_O_WORKDIR\n";
 
 # now add the environment to the submission command
     foreach my $env ( keys %ENV ) {
 	$pbsSub .= "export ${env}=\"$ENV{$env}\"\n";
     }
+
+    # define the command string, shellquoting it if so desired
+    my $cmdstring = shellquote(@{ $self->{STAGES}{$stageName}{'args'} });
 
     # and the actual commands
     $pbsSub .= <<END;
@@ -131,7 +123,7 @@ rm -f $runningFile
 
 END
 
-open PIPE, "|qsub" or die "ERROR: could not open pipe to qsub: $!\n";
+    open PIPE, "|qsub" or die "ERROR: could not open pipe to qsub: $!\n";
     print PIPE $pbsSub;
     if (! close PIPE ) {
 	warn "ERROR: could not close qsub pipe $self->{NAME}: $!\n";

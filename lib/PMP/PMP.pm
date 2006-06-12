@@ -12,7 +12,7 @@ use MNI::MiscUtilities qw(shellquote);
 
 # the version number
 
-$PMP::VERSION = '0.6.8';
+$PMP::VERSION = '0.6.9';
 
 # the constructor
 sub new {
@@ -47,6 +47,8 @@ sub new {
     $self->{toBeExecuted} = [];
     # turns extra verbose printing on or off
     $self->{DEBUG} = 1;
+    # lock flag on pipeline (-1=not initialized; 0=done; >0=locked)
+    $self->{lock} = -1;
     # holds a vaguely dependency tree like object;
     $self->{dependencyTree} = [];
     # whether all stages or only a subset are to be run
@@ -148,7 +150,7 @@ sub printUnfinished {
     }
 
     $self->sortStages() unless $self->{isSorted};
-    print "$self->{NAME}: unfinished stages: \n";
+    print "Pipe $self->{NAME}: unfinished stages: \n";
     foreach my $stage ( @{ $self->{sortedStages} } ) {
 	if (! $self->{STAGES}{$stage}{'finished'} ) {
 	    if ($verbose) { $self->printStage($stage); }
@@ -304,7 +306,6 @@ sub getPipelineStatus {
   my @queuedStages;
   my @failedStages;
   my @finishedStages;
-  my $overallStatus = "$self->{NAME}: Not Started";
 
   # sort each stage into one of the four possible arrays
   foreach my $stage ( @{ $self->{sortedStages} } ) {
@@ -321,17 +322,19 @@ sub getPipelineStatus {
     }
   }
 
+  my $overallStatus = "Pipe $self->{NAME} status: \n";
+
+  if (@failedStages) {
+    $overallStatus .= "  Failed: @failedStages\n";
+  }
+  if (@finishedStages) {
+    $overallStatus .= "  Finished: @finishedStages\n";
+  }
   if (@runningStages) {
-    $overallStatus = "$self->{NAME}: Running: @runningStages";
+    $overallStatus .= "  Running: @runningStages\n";
   }
-  elsif (@queuedStages) {
-    $overallStatus = "$self->{NAME}: Queued: @queuedStages";
-  }
-  elsif (@failedStages) {
-    $overallStatus = "$self->{NAME}: Failed: @failedStages";
-  }
-  elsif (@finishedStages) {
-    $overallStatus = "$self->{NAME}: Finished: @finishedStages";
+  if (@queuedStages) {
+    $overallStatus .= "  Queued: @queuedStages\n";
   }
   return $overallStatus;
 }
@@ -535,17 +538,63 @@ sub registerPrograms {
     $self->{areRegistered} = 1;
 }
 
+# Initialize the lock file for this pipeline.
+sub initLockFile {
+
+    my $self = shift;
+
+    my $lockfile = $self->getLockFile();
+    if (! -e $lockfile) {
+      $self->{lock} = 1;
+      system( "touch $lockfile" );
+      print "Lock file for pipe $self->{NAME} created.\n";
+    } else {
+      $self->{lock} = 0;
+      print "Lock file for pipe $self->{NAME} already exists.\n";
+    }
+}
+
+# Remove the lock file for this pipeline.
+sub cleanLockFile {
+
+    my $self = shift;
+
+    if( $self->{lock} ) {
+      my $lockfile = $self->getLockFile();
+      if ( -e $lockfile) {
+        print "Lock file for pipe $self->{NAME} removed.\n";
+        unlink $lockfile;
+      }
+      $self->{lock} = 0;
+    }
+}
+
 # run the next iteration
 sub run {
+
     my $self = shift;
 
     # make sure the programs have all been registered
     $self->registerPrograms() unless $self->{areRegistered};
-    
-    foreach my $key ( @{ $self->{toBeExecuted} } ) {
-	$self->execStage($key);
+
+    # initialize the lock file for this pipeline.
+    if( $self->{lock} == -1 ) {
+      $self->initLockFile() 
     }
-    return $self->updateStatus();
+
+    my $status = 0;
+
+    if( $self->{lock} ) {    
+      foreach my $key ( @{ $self->{toBeExecuted} } ) {
+	$self->execStage($key);
+      }
+      $status = $self->updateStatus();
+      if( $status == 0 ) {
+        $self->cleanLockFile() 
+      }
+    }
+
+    return $status;
 }
 
 # query whether a stage is finished
@@ -652,7 +701,7 @@ sub resetFailures {
     foreach my $key (@{ $self->{sortedStages} }) {
         if( $self->isStageFailed($key) || 
             ( $self->isStageFinished($key) && $self->isStageRunning($key) ) ) {
-            print "\n$self->{NAME}: Failed stage $key\n";
+            print "Pipe $self->{NAME}: Failed stage $key\n";
 	    $self->resetFromStage($key);
         }
     }
@@ -663,7 +712,7 @@ sub resetFailures {
     foreach my $stage (@{ $self->{sortedStages} }) {
 	foreach my $key ( @{ $self->{STAGES}{$stage}{'prereqs'} } ) {
             if ( !grep(/$key/, @{$self->{sortedStages}}) ) {
-                print "$self->{NAME}: Prereq $key of stage $stage is not a valid pipeline stage.\n";
+                print "Pipe $self->{NAME}: Prereq $key of stage $stage is not a valid pipeline stage.\n";
                 $prereq_error++;
             }
         }
@@ -679,7 +728,7 @@ sub resetFailures {
 	    # check if this stage is really finished based on its prereqs
 	    foreach my $key ( @{ $self->{STAGES}{$stage}{'prereqs'} } ) {
                 if ( !$self->isStageFinished($key) ) {
-                    print "$self->{NAME}: Prereq $key of stage $stage is not finished.\n";
+                    print "Pipe $self->{NAME}: Prereq $key of stage $stage is not finished.\n";
 		    $ready = 0;
                 }
 	    }
@@ -722,7 +771,7 @@ sub resetFromStage {
 
     my $numAdded = 1;
 
-    print "\n$self->{NAME}: resetting all stages from $stageName\n";
+    print "Pipe $self->{NAME}: resetting all stages from $stageName\n";
 
     while ($numAdded) { #keep going until no more stages are added
 	$numAdded = 0;
@@ -733,7 +782,6 @@ sub resetFromStage {
 			# a stage in the to be reset list is a prereq for this
 			# stage - reset it too.
 			push @stagesToBeReset, $stage; 
-            print "adding $stage to reset list\n";
 			$numAdded++;
 		    }
 		}
@@ -743,10 +791,14 @@ sub resetFromStage {
 
     # do the actual resetting
     foreach my $stage (@stagesToBeReset) {
+        if( ( -f $self->getLogFile($stage) ) or
+            ( -f $self->getFinishedFile($stage) ) or
+            ( -f $self->getFailedFile($stage) ) or
+            ( -f $self->getRunningFile($stage) ) ) {
+          print "Pipe $self->{NAME}: reset $stage\n";
+        }
 	$self->resetStage($stage);
-	print "$self->{NAME}: reset $stage\n";
     }
-    print "\n";
 }	    
 
 # reset all stages
@@ -889,6 +941,11 @@ sub getLogFile {
     my $self = shift;
     my $stageName = shift;
     return $self->getStatusBase($stageName) . ".log";
+}
+
+sub getLockFile { 
+    my $self = shift;
+    return "$self->{STATUSDIR}/$self->{NAME}.lock";
 }
 
 # designate a stage has running

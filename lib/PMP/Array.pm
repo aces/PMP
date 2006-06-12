@@ -58,6 +58,7 @@ sub sleepTime {
 # runs all the pipes to completion/crash
 sub run {
     my $self = shift;
+    my $lockTime = time();
     
     my $allFinished = 0;
     while (! $allFinished) {

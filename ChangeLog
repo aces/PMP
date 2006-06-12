@@ -1,4 +1,9 @@
 2006-04-06      Claude Lepage   <claude@bic.mni.mcgill.ca>
+        * remove default queues in sge and pbs
+	* implementation of project lock files
+	* bumped version to 0.6.9
+
+2006-04-06      Claude Lepage   <claude@bic.mni.mcgill.ca>
 	* add hierarchical dependencies on prereqs for restarts
 	* add priority scheme to sge (same as pbs)
 	* bumped version to 0.6.8
