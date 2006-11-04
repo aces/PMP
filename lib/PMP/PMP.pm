@@ -8,11 +8,11 @@ package PMP::PMP;
 use strict;
 use MNI::Spawn;
 use MNI::Startup;
-use MNI::MiscUtilities qw(shellquote);
+use MNI::MiscUtilities qw(shellquote timestamp);
 
 # the version number
 
-$PMP::VERSION = '0.6.9';
+$PMP::VERSION = '0.7.0';
 
 # the constructor
 sub new {
@@ -339,6 +339,27 @@ sub getPipelineStatus {
   return $overallStatus;
 }
 
+# Returns the numbre of jobs currently queued 
+# This is a rather brute force method; would be better to keep track
+# of queued stages explicitly
+
+sub nQueued {
+  my $self = shift;
+
+  # make sure stages are sorted
+  $self->sortStages() unless $self->{isSorted};
+  
+  my $nQueued = 0;
+  foreach my $stage ( @{ $self->{sortedStages} } ) {
+      if ($self->{STAGES}{$stage}{running} &&
+	  (! -f $self->getLogFile($stage))) {
+	  $nQueued++;
+      }
+  }
+  
+  return $nQueued;
+}
+
 # prints, in CSV format, the header row for a status report. Takes a
 # filehandle reference as the argument.
 sub printStatusReportHeader {
@@ -571,7 +592,6 @@ sub cleanLockFile {
 
 # run the next iteration
 sub run {
-
     my $self = shift;
 
     # make sure the programs have all been registered
@@ -597,24 +617,35 @@ sub run {
     return $status;
 }
 
+# Get stage status
+sub stageStatus {
+    my $self = shift;
+    my $stageName = shift;
+    my $status = shift;
+
+    my $returnVal = 0;
+
+    # check whether the status flag is set
+    if ( $self->{STAGES}{$stageName}{$status} ) { 
+	$returnVal = 1;
+    }
+    elsif ( -f $self->getStageFile($stageName, $status) ) {
+	# We have a status file but the status in the hash was not set
+	# to finished
+	printf "[%s] Changing status of %s in pipe %s to %s\n", 
+		timestamp(), $stageName, $self->{NAME}, $status;
+	$self->{STAGES}{$stageName}{$status} = 1;
+	$returnVal =  1;
+    }
+    return $returnVal;
+}
+
 # query whether a stage is finished
 sub isStageFinished {
     my $self = shift;
     my $stageName = shift;
 
-    my $returnVal = 0;
-
-    # check whether finished status flag is set
-    if ( $self->{STAGES}{$stageName}{'finished'} ) { 
-	$returnVal = 1;
-    }
-    elsif ( -f $self->getFinishedFile($stageName) ) {
-	# we have a failed file by the status in the hash was not set to finished
-	print "Changing status of $stageName in pipe $self->{NAME} to finished\n";
-	$self->{STAGES}{$stageName}{'finished'} = 1;
-	$returnVal =  1;
-    }
-    return $returnVal;
+    return $self->stageStatus($stageName, 'finished');
 }
 
 # query whether a stage is running
@@ -622,19 +653,7 @@ sub isStageRunning {
     my $self = shift;
     my $stageName = shift;
 
-    my $returnVal = 0;
-
-    # check whether running status flag is set
-    if ( $self->{STAGES}{$stageName}{'running'} ) { 
-	$returnVal = 1;
-    }
-    elsif ( -f $self->getRunningFile($stageName) ) {
-	# we have a running stage from the status files
-	print "Changing status of $stageName in pipe $self->{NAME} to running\n";
-	$self->{STAGES}{$stageName}{'running'} = 1;
-	$returnVal =  1;
-    }
-    return $returnVal;
+    return $self->stageStatus($stageName, 'running');
 }
 
 # query whether a stage has failed
@@ -642,19 +661,7 @@ sub isStageFailed {
     my $self = shift;
     my $stageName = shift;
 
-    my $returnVal = 0;
-
-    # check whether failed status flag is set
-    if ( $self->{STAGES}{$stageName}{'failed'} ) { 
-	$returnVal = 1;
-    }
-    elsif ( -f $self->getFailedFile($stageName) ) {
-	# we have a failed file but the status in the hash was not set to fail
-	print "Changing status of $stageName in pipe $self->{NAME} to failed\n";
-	$self->{STAGES}{$stageName}{'failed'} = 1;
-	$returnVal =  1;
-    }
-    return $returnVal;
+    return $self->stageStatus($stageName, 'failed');
 }
 
 # reset the status of a stage to make it runnable
@@ -943,12 +950,19 @@ sub getLogFile {
     return $self->getStatusBase($stageName) . ".log";
 }
 
+sub getStageFile {
+    my $self = shift;
+    my $stageName = shift;
+    my $status = shift;
+    return $self->getStatusBase($stageName) . ".${status}";
+}
+
 sub getLockFile { 
     my $self = shift;
     return "$self->{STATUSDIR}/$self->{NAME}.lock";
 }
 
-# designate a stage has running
+# designate a stage as running
 sub declareStageRunning {
     my $self = shift;
     my $stageName = shift;
@@ -956,7 +970,7 @@ sub declareStageRunning {
     my $runningFile = $self->getRunningFile($stageName);
     system( "touch $runningFile" );
     $self->{STAGES}{$stageName}{'running'} = 1;
-    print "Changing status of $stageName in pipe $self->{NAME} to running\n";
+    printf "[%s] Changing status of %s in pipe %s to running\n", timestamp(), $stageName, $self->{NAME};
 }
 
 # designate a stage as having finished

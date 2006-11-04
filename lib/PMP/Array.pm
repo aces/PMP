@@ -20,6 +20,8 @@ sub new {
     $self->{PIPES} = [];
     # default waiting time
     $self->{SLEEP} = 15;
+    # maximum number of jobs in queue (ridiculously large by default)
+    $self->{MAXQUEUED} = 10e6;
 
     # bring the class into existence
     bless($self, $class);
@@ -55,21 +57,40 @@ sub sleepTime {
     return $self->{SLEEP};
 }
 
+# get or set the maximum number of jobs to keep queued
+sub maxQueued {
+    my $self = shift;
+    if (@_) { $self->{MAXQUEUED} = shift; }
+    return $self->{MAXQUEUED};
+}
+
 # runs all the pipes to completion/crash
 sub run {
     my $self = shift;
-    my $lockTime = time();
-    
+    my $nPipes = $#{ $self->{PIPES} } + 1;
+
     my $allFinished = 0;
     while (! $allFinished) {
 	$allFinished = 1;
- 	foreach my $pipeline ( @{ $self->{PIPES} } ) {
+	my $i = 0;
+	my $nQueued = 0;
+
+	# Loop through all pipes, but go to sleep when the maximum
+	# number of queued jobs has been reached
+	while (($nQueued < $self->{MAXQUEUED}) && ($i < $nPipes)) {
+	    my $pipeline = $self->{PIPES}[$i];
+
 	    my $status = $pipeline->run();
-	    $allFinished = 0 if $status;
+	    if ($status) {
+		$allFinished = 0;
+		$nQueued += $pipeline->nQueued();
+	    }
+
+	    $i++;
 	}
 	sleep $self->{SLEEP};
     }
-    print "\nStopped Processing all pipeline.\n\n";
+    print "\nStopped Processing all pipelines.\n\n";
 }
 
 # updates the status of all pipes based on filenames
@@ -197,4 +218,16 @@ sub printStages {
     @{ $self->{PIPES} }[0]->printStages();
 }
 
+
+# Remove lock files
+sub cleanup {
+    my $self = shift;
+
+    foreach my $pipeline ( @{ $self->{PIPES} } ) {
+	$pipeline->cleanLockFile();
+    }
+}
+
 1;
+
+
