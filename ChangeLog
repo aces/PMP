@@ -1,3 +1,10 @@
+2007-01-05	Jason Lerch	<jason@bic.mni.mcgill.ca>
+
+	* fixed the pmp_test.t to use PMP::spawn interface
+	* added lock cleaning and initing to pmp_test.t
+	* fixed how pmp_sge_test.t checks for SGE existence
+	* pmp_prereqs_test.t now expects to fail with erroneous prereq.
+
 2006-11-04      Claude Lepage   <claude@bic.mni.mcgill.ca>
 	* add cleanup() to delete lock files on an interrupt (Alex Z)
 	* add maximum number of queued jobs (Alex Z)

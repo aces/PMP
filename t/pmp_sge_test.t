@@ -6,12 +6,15 @@ use PMP::sge;
 
 use Test::More;
 # test if SGE's qsub is installed at all
-if ( system("qsub -help") != 0 ) {
-    plan skip_all => "SGE not installed - skipping test";
-}
-# TODO: test if PBS rather than SGE is installed
-else {
+my $pipeDir = "/projects/mice/jlerch/test-PMP-pipeline";
+system("mkdir $pipeDir") unless (-d $pipeDir);
+
+my $sge_message = `qsub -help`;
+if ( $sge_message =~ /SGE/ and -w $pipeDir) {
     plan tests => 2;
+}
+else {
+    plan skip_all => "SGE not installed or $pipeDir not writeable: skipping test";
 }
 
 
@@ -24,11 +27,9 @@ my $file4 = "four.tmp";
 
 my $test = PMP::sge->new();
 
-my $pipeDir = "/home/bic/jason/pmp-test-tmp";
-
 $test->name("test-pipeline");
 $test->statusDir($pipeDir);
-system("mkdir -p $pipeDir") unless (-d $pipeDir);
+
 
 $test->addStage( 
     { name => "stage2",
@@ -39,7 +40,7 @@ $test->addStage(
     } );
 $test->addStage( 
     { name => "test-stage",
-      inputs => [$file1, $file2],
+      inputs => [],
       outputs => [$file3],
       args => ["touch", $file3] 
     } );
@@ -63,4 +64,4 @@ while ($continue) {
 
 ok(-f $test->getFinishedFile("test-stage"), 'first file exists' );
 ok(! -f $test->getFinishedFile("stage2"), 'and second file does not' );
-#system("rm -rf $pipeDir");
+system("rm -rf $pipeDir");
