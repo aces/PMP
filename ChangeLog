@@ -2,7 +2,8 @@
 
 	* added new function to compute dependencies based on inputs and outputs.
 	* fixed DOT file creation to remove periods from stage names.
-
+	* repeat of output now dies in computeDependenciesFromInputs.
+	
 2007-01-05	Jason Lerch	<jason@bic.mni.mcgill.ca>
 
 	* fixed the pmp_test.t to use PMP::spawn interface

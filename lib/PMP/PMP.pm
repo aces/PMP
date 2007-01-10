@@ -429,6 +429,10 @@ sub computeDependenciesFromInputs {
   my %output_stages;
   foreach my $key (keys %{ $self->{STAGES} }) {
     foreach my $output ( @{$self->{STAGES}{$key}{'outputs'}} ) {
+      # die if an output exists more than once in pipeline
+      if ($output_stages{$output}) {
+	die "ERROR: output $output exists more than once in pipeline.\n";
+      }
       $output_stages{$output} =  $self->{STAGES}{$key}{'name'};
     }
   }
