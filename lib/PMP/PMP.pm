@@ -228,9 +228,10 @@ sub createFilenameDotGraph {
     print DOT "digraph G {\n";
 
     foreach my $stage (@{ $self->{STAGES} }) {
-        # dot doesn't like dashes.
+        # dot doesn't like dashes or periods
         my $dest = $stage;
         $dest =~ s/-/_/g;
+	$dest =~ s/\./_/g;
         
         print DOT "$dest [shape=Mrecord, label=\"{$stage|";
         foreach my $input ( @{ $self->{STAGES}{$stage}{'outputs'} } ) {
@@ -241,8 +242,9 @@ sub createFilenameDotGraph {
         
         foreach my $dep ( @{ $self->{STAGES}{$stage}{'prereqs'} } ) {
             my $source = $dep;
-            # dot doesn't like dashes.
+            # dot doesn't like dashes or periods
             $source =~ s/-/_/g;
+	    $source =~ s/\./_/g;
             print DOT "$source -> ${dest};\n";
         }
     }
@@ -263,9 +265,10 @@ sub createDotGraph {
     print DOT "digraph G {\n";
 
     foreach my $stage (keys %{ $self->{STAGES} }) {
-	# dot doesn't like dashes.
+	# dot doesn't like dashes or periods
 	my $dest = $stage;
 	$dest =~ s/-/_/g;
+	$dest =~ s/\./_/g;
 
 	# add a descriptive label if it exists
 	if ( exists $self->{STAGES}{$stage}{'label'} ) {
@@ -280,8 +283,9 @@ sub createDotGraph {
 
 	foreach my $dep ( @{ $self->{STAGES}{$stage}{'prereqs'} } ) {
 	    my $source = $dep;
-	    # dot doesn't like dashes.
+	    # dot doesn't like dashes or periods
 	    $source =~ s/-/_/g;
+	    $source =~ s/\./_/g;
 	    print DOT "$source -> ${dest};\n";
 	}
     }
@@ -416,6 +420,31 @@ sub printStatusReport {
     print $fileHandle "\n";
 }
 
+# compute the stage dependencies based in input and outputs
+sub computeDependenciesFromInputs {
+  my $self = shift;
+  
+  # create a hash of all outputs mapped to their stages
+  # note: requires outputs to be unique
+  my %output_stages;
+  foreach my $key (keys %{ $self->{STAGES} }) {
+    foreach my $output ( @{$self->{STAGES}{$key}{'outputs'}} ) {
+      $output_stages{$output} =  $self->{STAGES}{$key}{'name'};
+    }
+  }
+
+  # now traverse stages and set inputs
+  foreach my $key (keys %{ $self->{STAGES} }) {
+    foreach my $input ( @{$self->{STAGES}{$key}{'inputs'}} ) {
+      # check to see if input is in output list
+      if ($output_stages{$input}) {
+	# stage is in output list, so push onto prereqs
+	print "pushing $output_stages{$input} onto $self->{STAGES}{$key}{'name'}\n";
+	push @{$self->{STAGES}{$key}{'prereqs'}}, $output_stages{$input};
+      }
+    }
+  }
+}
 
 # print the dependency tree
 sub printDependencyTree {
