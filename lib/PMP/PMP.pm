@@ -95,14 +95,29 @@ sub addStage {
     if (! exists $$stage{'name'} ) {
 	die "ERROR specifying stage: no name specified!\n";
     }
-    if (! exists $$stage{'inputs'} ) {
-	die "ERROR defining stage $$stage{'name'}: no inputs specified!\n";
-    }
-    if (! exists $$stage{'outputs'} ) {
-	die "ERROR defining stage $$stage{'name'}: no outputs specified!\n";
-    }
+#    if (! exists $$stage{'inputs'} ) {
+#	die "ERROR defining stage $$stage{'name'}: no inputs specified!\n";
+#    }
+#    if (! exists $$stage{'outputs'} ) {
+#	die "ERROR defining stage $$stage{'name'}: no outputs specified!\n";
+#    }
     if (! exists $$stage{'args'} ) {
 	die "ERROR defining stage $$stage{'name'}: no args specified!\n";
+    }
+
+    print "ARGS: @{$$stage{'args'}}\n";
+    for (my $i=0; $i <= $#{$$stage{'args'}}; $i++) {
+      my @tmp_arg = split(':', $$stage{'args'}[$i]);
+      print "have split: @tmp_arg\n";
+      if ($#tmp_arg > 0) {
+	if ($tmp_arg[0] eq "in") {
+	  push @{$$stage{'inputs'}}, $tmp_arg[1];
+	}
+	elsif ($tmp_arg[0] eq "out") {
+	  push @{$$stage{'outputs'}}, $tmp_arg[1];
+	}
+	$$stage{'args'}[$i] = $tmp_arg[1];
+      }
     }
 
     # TODO: check whether the various items are of the correct datatype

@@ -1,3 +1,9 @@
+2007-01-11	Jason Lerch	<jason@bic.mni.mcgill.ca>
+
+	* added ability to define inputs and outputs from within the
+	stages parameter.
+	* added a test-case for that scenario.
+	
 2007-01-11      Claude Lepage   <claude@bic.mni.mcgill.ca>
 	* improve management of lock files
 	* return control to calling program when a failure occurs instead
