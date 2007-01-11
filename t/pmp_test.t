@@ -1,6 +1,7 @@
-#!/usr/bin/env perl -w
+#!/usr/bin/env perl
 
 use strict;
+use warnings "all";
 use PMP::spawn;
 use Test::Simple tests => 30;
 
@@ -71,9 +72,6 @@ $test->addStage(
 $test->updateStatus();
 $test->createDotGraph($dotGraph);
 
-$test->cleanLockFile();
-$test->initLockFile();
-
 # run this pipeline
 my $continue = 1;
 while ($continue) {
@@ -99,9 +97,6 @@ ok(-f $test->getFinishedFile("stage3"), 'third file exists' );  #9
 ok(! -f $test->getFinishedFile("stage4"), 'fourth file gone' ); #10
 ok(! -f $test->getFinishedFile("stage5"), 'fifth file gone' );  #11
 ok(! -f $test->getFinishedFile("stage6"), 'sixth file gone' );  #12
-
-$test->cleanLockFile();
-$test->initLockFile();
 
 # run this pipeline
 $continue = 1;
@@ -132,14 +127,10 @@ ok(! -f $test->getFinishedFile("stage6"), 'sixth file gone' );  #24
 $test->subsetToStage("stage4");
 # run this pipeline
 
-$test->cleanLockFile();
-$test->initLockFile();
-
 $continue = 1;
 while ($continue) {
     $continue = $test->run();
 }
-
 
 ok(-f $test->getFinishedFile("stage1"), 'first file exists' );  #25
 ok(-f $test->getFinishedFile("stage2"), 'second file exists' ); #26

@@ -24,7 +24,7 @@ sub execStage {
     my $failedFile = $self->getFailedFile($stageName);
 
     my $status = Spawn($self->{STAGES}{$stageName}{'args'},
-                       stdout => $logFile );
+                       stdout => $logFile, err_action => 'ignore' );
 
     if ($status != 0) {
         system( "touch $failedFile" );

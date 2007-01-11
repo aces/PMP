@@ -68,29 +68,44 @@ sub maxQueued {
 sub run {
     my $self = shift;
     my $nPipes = $#{ $self->{PIPES} } + 1;
+    my $i = 0;
+
+    # Assume all jobs are potentially running
+    my @status = [];
+    while ($i < $nPipes) {
+        push @status, 1;
+        $i++;
+    }
 
     my $allFinished = 0;
     while (! $allFinished) {
 	$allFinished = 1;
-	my $i = 0;
 	my $nQueued = 0;
+
+	$i = 0;
 
 	# Loop through all pipes, but go to sleep when the maximum
 	# number of queued jobs has been reached
 	while (($nQueued < $self->{MAXQUEUED}) && ($i < $nPipes)) {
 	    my $pipeline = $self->{PIPES}[$i];
 
-	    my $status = $pipeline->run();
-	    if ($status) {
-		$allFinished = 0;
-		$nQueued += $pipeline->nQueued();
-	    }
+            if( @status[$i] ) {
+	        @status[$i] = $pipeline->run();
+	        if (@status[$i]) {
+		    $allFinished = 0;
+		    $nQueued += $pipeline->nQueued();
+                }
+            }
 
 	    $i++;
 	}
 	sleep $self->{SLEEP};
     }
-    print "\nStopped Processing all pipelines.\n\n";
+    print "\nStopped processing all pipelines.\n\n";
+
+    print "\nChecking for undeleted lock files...\n";
+    cleanup();
+
 }
 
 # updates the status of all pipes based on filenames

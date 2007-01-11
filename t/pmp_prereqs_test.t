@@ -52,9 +52,6 @@ dies_ok {
 $test->updateStatus();
 } 'updateStatus dies due to incorrect prereq specification';
 
-# $test->cleanLockFile();
-# $test->initLockFile();
-
 # my $continue = 1;
 # while ($continue) {
 #     print "in run\n";

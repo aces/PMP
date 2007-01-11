@@ -47,7 +47,7 @@ sub new {
     $self->{toBeExecuted} = [];
     # turns extra verbose printing on or off
     $self->{DEBUG} = 1;
-    # lock flag on pipeline (-1=not initialized; 0=done; >0=locked)
+    # lock flag on pipeline (-1=not initialized; 0=already in use; >0=locked)
     $self->{lock} = -1;
     # holds a vaguely dependency tree like object;
     $self->{dependencyTree} = [];
@@ -604,7 +604,7 @@ sub initLockFile {
       print "Lock file for pipe $self->{NAME} created.\n";
     } else {
       $self->{lock} = 0;
-      print "Lock file for pipe $self->{NAME} already exists.\n";
+      print "Lock file for pipe $self->{NAME} already in use.\n";
     }
 }
 
@@ -613,13 +613,13 @@ sub cleanLockFile {
 
     my $self = shift;
 
-    if( $self->{lock} ) {
+    if( $self->{lock} == 1 ) {
       my $lockfile = $self->getLockFile();
       if ( -e $lockfile) {
         print "Lock file for pipe $self->{NAME} removed.\n";
         unlink $lockfile;
       }
-      $self->{lock} = 0;
+      $self->{lock} = -1;
     }
 }
 
@@ -637,7 +637,7 @@ sub run {
 
     my $status = 0;
 
-    if( $self->{lock} ) {    
+    if( $self->{lock} == 1 ) {    
       foreach my $key ( @{ $self->{toBeExecuted} } ) {
 	$self->execStage($key);
       }

@@ -36,9 +36,10 @@ sub setPriorityScheme {
     # only one allowed so far: later-stages, which give priority to
     # later stages over earlier stages.
     if (! $scheme =~ /later-stages/ ) {
-	die "ERROR: illegal priority scheme $scheme\n";
+        warn "Warning: illegal priority scheme $scheme. Ignoring request.\n";
+    } else {
+        $self->{pbsPriorityScheme} = $scheme;
     }
-    $self->{pbsPriorityScheme} = $scheme;
 }
     
 
@@ -123,11 +124,16 @@ rm -f $runningFile
 
 END
 
-    open PIPE, "|qsub" or die "ERROR: could not open pipe to qsub: $!\n";
-    print PIPE $pbsSub;
-    if (! close PIPE ) {
+    if( open PIPE, "|qsub" ) {
+      print PIPE $pbsSub;
+      if (! close PIPE ) {
 	warn "ERROR: could not close qsub pipe $self->{NAME}: $!\n";
 	warn "Continuing for now, but this pipe might have gone bad.\n";
+      }
+    } else {
+      touch $failedFile;
+      unlink $runningFile;
+      warn "ERROR: could not open pipe to qsub: $!\n";
     }
 	
 }

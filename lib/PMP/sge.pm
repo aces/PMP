@@ -31,9 +31,10 @@ sub setPriorityScheme {
     # only one allowed so far: later-stages, which give priority to
     # later stages over earlier stages.
     if (! $scheme =~ /later-stages/ ) {
-        die "ERROR: illegal priority scheme $scheme\n";
+        warn "Warning: illegal priority scheme $scheme. Ignoring request.\n";
+    } else {
+        $self->{sgePriorityScheme} = $scheme;
     }
-    $self->{sgePriorityScheme} = $scheme;
 }
 
 # overwrite the execStage method and use SGE qsub command to submit jobs
@@ -113,11 +114,16 @@ END
 #print PIPE $sgeSub;
 #close PIPE;
 
-    open PIPE, "|qsub -S /bin/sh" or die "ERROR: could not open pipe to qsub: $!\n";
-    print PIPE $sgeSub;
-    if (! close PIPE ) {
+    if( open PIPE, "|qsub -S /bin/sh" ) {
+      print PIPE $sgeSub;
+      if (! close PIPE ) {
         warn "ERROR: could not close qsub pipe $self->{NAME}: $!\n";
         warn "Continuing for now, but this pipe might have gone bad.\n";
+      }
+    } else {
+      touch $failedFile;
+      unlink $runningFile;
+      warn "ERROR: could not open pipe to qsub: $!\n";
     }
 
 }
