@@ -113,8 +113,12 @@ END
 #open PIPE, ">/tmp/claude/test.sh";
 #print PIPE $sgeSub;
 #close PIPE;
-
-    if( open PIPE, "|qsub -S /bin/sh" ) {
+    my $pipeCmd = "|qsub -S /bin/sh";
+    if ($self->{STAGES}{$stageName}{'sge_opts'}) {
+      $pipeCmd .= " ";
+      $pipeCmd .= $self->{STAGES}{$stageName}{'sge_opts'};
+    }
+    if( open PIPE, $pipeCmd) {
       print PIPE $sgeSub;
       if (! close PIPE ) {
         warn "ERROR: could not close qsub pipe $self->{NAME}: $!\n";

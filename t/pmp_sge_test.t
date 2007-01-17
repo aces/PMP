@@ -6,19 +6,23 @@ use PMP::sge;
 
 use Test::More;
 # test if SGE's qsub is installed at all
-my $pipeDir = "/projects/mice/jlerch/test-PMP-pipeline";
-system("mkdir $pipeDir") unless (-d $pipeDir);
-
 my $sge_message = `qsub -help`;
-if ( $sge_message =~ /SGE/ and -w $pipeDir) {
-    plan tests => 2;
+
+# SGE needs a disk mounted across all systems executing jobs. Since this
+# is unlikely to be standard, force it to be in an environment variable.
+my $pipeDir = $ENV{PMP_SGE_TESTDIR};
+if (! $sge_message =~ /SGE/) {
+  plan skip_all => "SGE not installed - skipping tests.";
+} 
+elsif (! $pipeDir) {
+  plan skip_all => "Environment variable PMP_SGE_TESTDIR not defined - skipping.";
+}
+elsif (! -w $pipeDir) {
+  plan skip_all => "Cannot write to $pipeDir - skipping.";
 }
 else {
-    plan skip_all => "SGE not installed or $pipeDir not writeable: skipping test";
+    plan tests => 2;
 }
-
-
-
 
 my $file1 = "one.tmp";
 my $file2 = "two.tmp";
@@ -44,6 +48,12 @@ $test->addStage(
       outputs => [$file3],
       args => ["touch", $file3] 
     } );
+$test->addStage(
+    { name => "test-memory",
+      sge_opts => "-l vf=2G",
+      args => ["sleep", 10]
+    } );
+
 
 
 #$test->printStage("test-stage");
@@ -64,4 +74,4 @@ while ($continue) {
 
 ok(-f $test->getFinishedFile("test-stage"), 'first file exists' );
 ok(! -f $test->getFinishedFile("stage2"), 'and second file does not' );
-system("rm -rf $pipeDir");
+

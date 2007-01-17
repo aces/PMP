@@ -55,6 +55,8 @@ sub new {
     $self->{runAllStages} = 1;
     # a list of the subset of stages that are to be run
     $self->{stageSubset} = {};
+    # whether this pipeline has non-existent inputs (cause failure in run)
+    $self->{nonexistentInputs} = [];
 
     # set the spawning options
     # MNI::Spawn::SetOptions( err_action => 'ignore' );
@@ -95,20 +97,13 @@ sub addStage {
     if (! exists $$stage{'name'} ) {
 	die "ERROR specifying stage: no name specified!\n";
     }
-#    if (! exists $$stage{'inputs'} ) {
-#	die "ERROR defining stage $$stage{'name'}: no inputs specified!\n";
-#    }
-#    if (! exists $$stage{'outputs'} ) {
-#	die "ERROR defining stage $$stage{'name'}: no outputs specified!\n";
-#    }
     if (! exists $$stage{'args'} ) {
 	die "ERROR defining stage $$stage{'name'}: no args specified!\n";
     }
 
-    print "ARGS: @{$$stage{'args'}}\n";
+    # check whether inputs and outputs where defined inside the args array.
     for (my $i=0; $i <= $#{$$stage{'args'}}; $i++) {
       my @tmp_arg = split(':', $$stage{'args'}[$i]);
-      print "have split: @tmp_arg\n";
       if ($#tmp_arg > 0) {
 	if ($tmp_arg[0] eq "in") {
 	  push @{$$stage{'inputs'}}, $tmp_arg[1];
@@ -118,6 +113,14 @@ sub addStage {
 	}
 	$$stage{'args'}[$i] = $tmp_arg[1];
       }
+    }
+
+    # create empty inputs and output arrays if they have not been defined
+    if (! exists $$stage{'inputs'} ) {
+	$$stage{'inputs'} = [];
+    }
+    if (! exists $$stage{'outputs'} ) {
+        $$stage{'outputs'} = [];
     }
 
     # TODO: check whether the various items are of the correct datatype
@@ -461,6 +464,13 @@ sub computeDependenciesFromInputs {
 	print "pushing $output_stages{$input} onto $self->{STAGES}{$key}{'name'}\n";
 	push @{$self->{STAGES}{$key}{'prereqs'}}, $output_stages{$input};
       }
+      # if input not in output list, check for existence of file.
+      # if file does not exist, set tainted flag
+      else {
+	if (! -f $input) {
+	  push @{$self->{nonexistentInputs}}, $input;
+	}
+      }
     }
   }
 }
@@ -641,6 +651,11 @@ sub cleanLockFile {
 # run the next iteration
 sub run {
     my $self = shift;
+
+    # die if pipeline has non-existent inputs
+    if ( $#{$self->{nonexistentInputs}} >= 0) {
+      die "ERROR: these inputs to the pipeline did not exist: @{$self->{nonexistentInputs}}\n";
+    }
 
     # make sure the programs have all been registered
     $self->registerPrograms() unless $self->{areRegistered};

@@ -1,3 +1,11 @@
+2007-01-17	Jason Lerch	<jason@bic.mni.mcgill.ca>
+
+	* added check to run() for whether non-existent inputs to file
+	exist iniside PMP.pm.  
+	* added sge_opts as allowable stage specifiction checked in sge.pm
+	* added test for non-existent files.
+	* added test for requested memory to sge.pm
+
 2007-01-11	Jason Lerch	<jason@bic.mni.mcgill.ca>
 
 	* added ability to define inputs and outputs from within the
