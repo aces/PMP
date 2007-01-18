@@ -1,5 +1,10 @@
 2007-01-17	Jason Lerch	<jason@bic.mni.mcgill.ca>
 
+	* some documentation updates.
+	* removed one superfluous print statement from PMP.pm.
+
+2007-01-17	Jason Lerch	<jason@bic.mni.mcgill.ca>
+
 	* added check to run() for whether non-existent inputs to file
 	exist iniside PMP.pm.  
 	* added sge_opts as allowable stage specifiction checked in sge.pm

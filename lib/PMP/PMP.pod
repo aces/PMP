@@ -143,16 +143,27 @@ method, an example of which is:
 
     $pipeline->addStage(
 	{ name => "total",
-      label => "this does something interesting",
+	  label => "this does something interesting",
 	  inputs => [$filename],
 	  outputs => [$talTransform],
 	  args => ["mritotal", $filename, $talTransform] });
 
+This same stage can also be written more concisely:
+
+    $pipeline->addStage(
+        { name => "total",
+	  args => ["mritotal", "in:$filename", "out:$talTransform"] });
+
 After all the stages have been defined some further initialisation
 commands can be run:
 
+    # compute the dependencies based on the filenames:
+    $pipeline->computeDependenciesFromInputs()
+    # update the status of all stages based on previous pipeline runs
+    $pipeline->updateStatus();
     # restart all stages that failed in a previous run
     $pipeline->resetFailures();
+
 
 Then the pipeline can be added to the Pipearray:
 
@@ -189,27 +200,38 @@ especially for newlines: use \\n.
 
 =item * inputs
 
-An array of the input filenames. The only use this array is currently
-put to is establishing pipeline status based on file existence and
-dates.
+An array of the input filenames. Input files can be specified
+explicitly in this array or within the args statement (see
+below). Inputs and outputs can be used to define relationships between
+stages.
 
 =item * outputs
 
-An array of output filenames. Only currently used for establishing
-pipeline status based on file existence and dates.
+An array of output filenames. Output files can be specified explicitly
+in this array or within the args statement (see below).
+
+=item * sge_opts
+
+A string which is directly passed to qsub when using the SGE execution
+mode (and is ignored otherwise). The following string "-l vf=2G"
+would, for example, reserve 2 gigabytes of memory.
 
 =item * args
 
 An array containing the actual command that will be run when this
 stage is executed. The first element is the program name, the
 following the options and filenames in the same order as that program
-needs them.
+needs them. If an option is prefixed with either in: or out:
+(i.e. "in:$filename") it is considered to be an input or output
+to/from this stage.
 
 =item * prereqs
 
 An optional array of stage names upon which this current stage
-depends. If this option is not passed to addStage then it is assumed
-that this stage has no prerequisites.
+depends. Dependencies can also be computed based on relationships
+between the inputs and outputs of different pipeline stages. In that
+case only stages which would not be included through that mechnism
+should be added manually to the prereqs array.
 
 =item * shellquote
 
@@ -225,12 +247,10 @@ An example of adding a stage would be:
 
     $pipeline->addStage(
 	{ name => "cls",
-      label => "does something else that is interesting",
-	  inputs => [$final],
-	  outputs => [$cls],
+          label => "does something else that is interesting",
 	  args => ["classify_clean", "-clobber", "-clean_tags", 
-	           $final, $cls],
-	  prereqs => ["final"] });
+	           "in:$final", "out:$cls"] });
+
  
 =head2 statusDir
 
@@ -279,6 +299,12 @@ turns debugging off, anything else turns it on.
 Prints the unfinished stages. If no arguments are supplied it prints
 them tersely, if an argument is supplied it gives more detail about
 each stage that is still unfinished.
+
+=head2 computeDependenciesFromInputs
+
+Uses the input and output files of all stages to compute between stage
+dependencies. Should be called after all stages have been added and
+before the pipeline is executed.
 
 =head2 statusFromFiles
 

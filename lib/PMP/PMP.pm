@@ -461,7 +461,6 @@ sub computeDependenciesFromInputs {
       # check to see if input is in output list
       if ($output_stages{$input}) {
 	# stage is in output list, so push onto prereqs
-	print "pushing $output_stages{$input} onto $self->{STAGES}{$key}{'name'}\n";
 	push @{$self->{STAGES}{$key}{'prereqs'}}, $output_stages{$input};
       }
       # if input not in output list, check for existence of file.
