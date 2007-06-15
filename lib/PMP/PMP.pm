@@ -12,7 +12,7 @@ use MNI::MiscUtilities qw(shellquote timestamp);
 
 # the version number
 
-$PMP::VERSION = '0.7.0';
+$PMP::VERSION = '0.7.1';
 
 # the constructor
 sub new {
@@ -107,11 +107,11 @@ sub addStage {
       if ($#tmp_arg > 0) {
 	if ($tmp_arg[0] eq "in") {
 	  push @{$$stage{'inputs'}}, $tmp_arg[1];
-	}
-	elsif ($tmp_arg[0] eq "out") {
+	  $$stage{'args'}[$i] = $tmp_arg[1];
+	} elsif ($tmp_arg[0] eq "out") {
 	  push @{$$stage{'outputs'}}, $tmp_arg[1];
+	  $$stage{'args'}[$i] = $tmp_arg[1];
 	}
-	$$stage{'args'}[$i] = $tmp_arg[1];
       }
     }
 
@@ -650,6 +650,7 @@ sub cleanLockFile {
 # run the next iteration
 sub run {
     my $self = shift;
+    my $granularity = shift;
 
     # die if pipeline has non-existent inputs
     if ( $#{$self->{nonexistentInputs}} >= 0) {
@@ -667,10 +668,26 @@ sub run {
     my $status = 0;
 
     if( $self->{lock} == 1 ) {    
-      foreach my $key ( @{ $self->{toBeExecuted} } ) {
-	$self->execStage($key);
+      if( $granularity == 0 ) {
+        foreach my $key ( @{ $self->{toBeExecuted} } ) {
+	  $self->execStage($key);
+        }
+        $status = $self->updateStatus();
+      } else {
+        my $failed_flag = 0;
+        foreach my $stage ( @{ $self->{sortedStages} } ) {
+          if ( $self->{STAGES}{$stage}{'failed'} ) {
+            $failed_flag = 1; last;
+          }
+        }
+        if( !$failed_flag ) {
+          if( $#{$self->{toBeExecuted}} >= 0 ) {
+            $self->execAllStages();
+          }
+          $status = $self->updateStatus();
+        }
       }
-      $status = $self->updateStatus();
+
       if( $status == 0 ) {
         $self->cleanLockFile() 
       }

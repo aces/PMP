@@ -13,5 +13,9 @@ lib/PMP/spawn.pod
 Makefile.PL
 MANIFEST			This list of files
 README
+t/pmp_nonexistent_inputs.t
+t/pmp_prereqs_test.t
+t/pmp_sge_test.t
+t/pmp_short_stage.t
 t/pmp_test.t
 META.yml                                 Module meta-data (added by MakeMaker)

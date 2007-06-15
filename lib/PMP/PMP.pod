@@ -461,9 +461,11 @@ automatically when needed and therefore has no place in userland.
 
 =head2 execStage
 
-Takes a stage name as the argument and executes that stage. This
-method is overridden in the PMPpbs subclass. In PMP it just uses the
-MNI::Spawn interface. 
+Takes a stage name as the argument and executes that stage.
+
+=head2 execAllStages
+
+Execute all stages in one lumped job.
 
 =head2 getStatusBase
 

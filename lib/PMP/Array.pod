@@ -31,6 +31,17 @@ completion.
 
 Initialises the pipeline - has to be the first method called.
 
+=head2 maxQueued
+
+Set the maximum number of running jobs in queue. 
+
+=head2 setGranularity
+
+Set the granularity level for the scheduling of the stages. An argument 
+value of 0 will submit each stage to the queue whereas a value of 1 will
+lump together all stages for a given subject and submit them in one job 
+to the queue (one queue submission per subject).
+
 =head2 addPipe
 
 Takes a PMP object as its argument and adds it to the PMParray.

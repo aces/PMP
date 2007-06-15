@@ -22,6 +22,10 @@ sub new {
     $self->{SLEEP} = 15;
     # maximum number of jobs in queue (ridiculously large by default)
     $self->{MAXQUEUED} = 10e6;
+    # granularity of scheduling of stages
+    # 0 - stage by stage
+    # 1 - all stages at once
+    $self->{GRANULARITY} = 0;
 
     # bring the class into existence
     bless($self, $class);
@@ -64,6 +68,12 @@ sub maxQueued {
     return $self->{MAXQUEUED};
 }
 
+# set granularity of scheduling of stages
+sub setGranularity {
+    my $self = shift;
+    $self->{GRANULARITY} = shift;
+}
+
 # runs all the pipes to completion/crash
 sub run {
     my $self = shift;
@@ -90,10 +100,14 @@ sub run {
 	    my $pipeline = $self->{PIPES}[$i];
 
             if( @status[$i] ) {
-	        @status[$i] = $pipeline->run();
+	        @status[$i] = $pipeline->run( $self->{GRANULARITY} );
 	        if (@status[$i]) {
 		    $allFinished = 0;
-		    $nQueued += $pipeline->nQueued();
+                    if( $self->{GRANULARITY} == 0 ) {
+                      $nQueued += $pipeline->nQueued();
+                    } else {
+                      $nQueued += 1;
+		    }
                 }
             }
 

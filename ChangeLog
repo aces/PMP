@@ -1,3 +1,10 @@
+2007-06-05	Claude Lepage   <claude@bic.mni.mcgill.ca>
+
+	* added granularity option for running stages all in
+          all script at once
+        * added global options for qsub for site-specific rules
+	* fixed a bug with in: and out:
+
 2007-01-17	Jason Lerch	<jason@bic.mni.mcgill.ca>
 
 	* some documentation updates.
