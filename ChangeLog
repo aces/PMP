@@ -1,3 +1,6 @@
+2007-08-24	Claude Lepage   <claude@bic.mni.mcgill.ca>
+	* fixed syntax error with `touch` in sge.pm and pbs.pm
+
 2007-06-05	Claude Lepage   <claude@bic.mni.mcgill.ca>
 
 	* added granularity option for running stages all in

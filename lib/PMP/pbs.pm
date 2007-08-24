@@ -135,7 +135,7 @@ END
 	warn "Continuing for now, but this pipe might have gone bad.\n";
       }
     } else {
-      touch $failedFile;
+      `touch $failedFile`;
       unlink $runningFile;
       warn "ERROR: could not open pipe to qsub: $!\n";
     }
