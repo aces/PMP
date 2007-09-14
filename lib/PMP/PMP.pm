@@ -245,7 +245,7 @@ sub createFilenameDotGraph {
 
     print DOT "digraph G {\n";
 
-    foreach my $stage (@{ $self->{STAGES} }) {
+    foreach my $stage (keys %{ $self->{STAGES} }) {
         # dot doesn't like dashes or periods
         my $dest = $stage;
         $dest =~ s/-/_/g;
@@ -276,7 +276,7 @@ sub createDotGraph {
     my $self = shift;
     my $filename = shift;
 
-    #$self->sortStages() unless $self->{isSorted};
+    $self->sortStages() unless $self->{isSorted};
 
     open DOT, ">$filename" or die "ERROR opening dot file $filename: $!\n";
 

@@ -1,3 +1,7 @@
+2007-09-14	Claude Lepage   <claude@bic.mni.mcgill.ca>
+	* fixed syntax error in PMP.pm for createFilenameDotGraph and
+          added stage sort in createDotGraph
+
 2007-08-24	Claude Lepage   <claude@bic.mni.mcgill.ca>
 	* fixed syntax error with `touch` in sge.pm and pbs.pm
 
