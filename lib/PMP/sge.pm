@@ -124,10 +124,12 @@ END
 #print PIPE $sgeSub;
 #close PIPE;
 
-    my $pipeCmd = "|qsub -S /bin/sh $self->{sgeOpts}";
+    my $pipeCmd = "|qsub -S /bin/sh";
+    if (exists $self->{sgeOpts}) {
+      $pipeCmd .= " $self->{sgeOpts}";
+    }
     if ($self->{STAGES}{$stageName}{'sge_opts'}) {
-      $pipeCmd .= " ";
-      $pipeCmd .= $self->{STAGES}{$stageName}{'sge_opts'};
+      $pipeCmd .= " $self->{STAGES}{$stageName}{'sge_opts'}";
     }
     if( open PIPE, $pipeCmd) {
       print PIPE $sgeSub;
@@ -220,7 +222,10 @@ END
 #print PIPE $sgeSub;
 #close PIPE;
 
-    my $pipeCmd = "|qsub -S /bin/sh $self->{sgeOpts}";
+    my $pipeCmd = "|qsub -S /bin/sh";
+    if (exists $self->{sgeOpts}) {
+      $pipeCmd .= " $self->{sgeOpts}";
+    }
     if( open PIPE, $pipeCmd) {
       print PIPE $sgeSub;
       if (! close PIPE ) {

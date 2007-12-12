@@ -99,9 +99,9 @@ sub run {
 	while (($nQueued < $self->{MAXQUEUED}) && ($i < $nPipes)) {
 	    my $pipeline = $self->{PIPES}[$i];
 
-            if( @status[$i] ) {
-	        @status[$i] = $pipeline->run( $self->{GRANULARITY} );
-	        if (@status[$i]) {
+            if( $status[$i] ) {
+	        $status[$i] = $pipeline->run( $self->{GRANULARITY} );
+	        if ($status[$i]) {
 		    $allFinished = 0;
                     if( $self->{GRANULARITY} == 0 ) {
                       $nQueued += $pipeline->nQueued();

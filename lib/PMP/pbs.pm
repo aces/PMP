@@ -128,7 +128,11 @@ rm -f $runningFile
 
 END
 
-    if( open PIPE, "|qsub $self->{pbsOpts}" ) {
+    my $pipeCmd = "|qsub ";
+    if (exists $self->{pbsOpts}) {
+      $pipeCmd .= " $self->{pbsOpts}";
+    }
+    if( open PIPE, $pipeCmd ) {
       print PIPE $pbsSub;
       if (! close PIPE ) {
 	warn "ERROR: could not close qsub pipe $self->{NAME}: $!\n";
@@ -225,7 +229,11 @@ END
 #print PIPE $pbsSub;
 #close PIPE;
 
-    if( open PIPE, "|qsub $self->{pbsOpts}" ) {
+    my $pipeCmd = "|qsub ";
+    if (exists $self->{pbsOpts}) {
+      $pipeCmd .= " $self->{pbsOpts}";
+    }
+    if( open PIPE, $pipeCmd ) {
       print PIPE $pbsSub;
       if (! close PIPE ) {
 	warn "ERROR: could not close qsub pipe $self->{NAME}: $!\n";
