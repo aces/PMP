@@ -229,18 +229,25 @@ END
 #print PIPE $pbsSub;
 #close PIPE;
 
-    my $pipeCmd = "|qsub ";
-    if (exists $self->{pbsOpts}) {
-      $pipeCmd .= " $self->{pbsOpts}";
+    # Submit the job this way to avoid the 100k command line
+    # limit in sh if commands are piped to qsub. Using a file
+    # removes the size restriction on the job script.
+
+    my $tmpdir = &tempdir( "pmp-XXXXXXXX", TMPDIR => 1, CLEANUP => 1 );
+    my $job_script = "${tmpdir}/${jobName}.sh";
+    open PIPE, ">${job_script}";
+    print PIPE $pbsSub;
+    close PIPE;
+
+    my @args = ( "qsub" );
+    if( exists $self->{pbsOpts} ) {
+      push @args, split( /\s+/, $self->{pbsOpts} );
     }
-    if( open PIPE, $pipeCmd ) {
-      print PIPE $pbsSub;
-      if (! close PIPE ) {
-	warn "ERROR: could not close qsub pipe $self->{NAME}: $!\n";
-	warn "Continuing for now, but this pipe might have gone bad.\n";
-      }
-    } else {
-      warn "ERROR: could not open pipe to qsub: $!\n";
+    push @args, ( $job_script );
+    if( system( @args ) ) {
+      warn "ERROR: could not qsub pipe $self->{NAME}: $!\n";
+      warn "Continuing for now, but this pipe might have gone bad.\n";
+      unlink( $job_script );
     }
 }
 

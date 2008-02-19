@@ -1,8 +1,15 @@
+2008-02-19	Claude Lepage   <claude@bic.mni.mcgill.ca>
+
+	* allow jobs scripts over 100k (sh max command line size)
+          by using a tmp file
+
 2007-09-14	Claude Lepage   <claude@bic.mni.mcgill.ca>
+
 	* fixed syntax error in PMP.pm for createFilenameDotGraph and
           added stage sort in createDotGraph
 
 2007-08-24	Claude Lepage   <claude@bic.mni.mcgill.ca>
+
 	* fixed syntax error with `touch` in sge.pm and pbs.pm
 
 2007-06-05	Claude Lepage   <claude@bic.mni.mcgill.ca>

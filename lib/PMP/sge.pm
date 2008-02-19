@@ -5,6 +5,7 @@
 
 package PMP::sge;
 use PMP::PMP;
+use File::Temp qw/ tempdir /;
 use MNI::MiscUtilities qw(shellquote);
 
 @ISA = ("PMP::PMP");
@@ -222,18 +223,25 @@ END
 #print PIPE $sgeSub;
 #close PIPE;
 
-    my $pipeCmd = "|qsub -S /bin/sh";
-    if (exists $self->{sgeOpts}) {
-      $pipeCmd .= " $self->{sgeOpts}";
+    # Submit the job this way to avoid the 100k command line
+    # limit in sh if commands are piped to qsub. Using a file
+    # removes the size restriction on the job script.
+
+    my $tmpdir = &tempdir( "pmp-XXXXXXXX", TMPDIR => 1, CLEANUP => 1 );
+    my $job_script = "${tmpdir}/${jobName}.sh";
+    open PIPE, ">${job_script}";
+    print PIPE $sgeSub;
+    close PIPE;
+
+    my @args = ( "qsub", "-S", "/bin/sh" );
+    if( exists $self->{sgeOpts} ) {
+      push @args, split( /\s+/, $self->{sgeOpts} );
     }
-    if( open PIPE, $pipeCmd) {
-      print PIPE $sgeSub;
-      if (! close PIPE ) {
-        warn "ERROR: could not close qsub pipe $self->{NAME}: $!\n";
-        warn "Continuing for now, but this pipe might have gone bad.\n";
-      }
-    } else {
-      warn "ERROR: could not open pipe to qsub: $!\n";
+    push @args, ( $job_script );
+    if( system( @args ) ) {
+      warn "ERROR: could not qsub pipe $self->{NAME}: $!\n";
+      warn "Continuing for now, but this pipe might have gone bad.\n";
+      unlink( $job_script );
     }
 }
 
