@@ -5,6 +5,7 @@
 
 package PMP::pbs;
 use PMP::PMP;
+use File::Temp qw/ tempdir /;
 use MNI::MiscUtilities qw(shellquote);
 
 @ISA = ("PMP::PMP");
