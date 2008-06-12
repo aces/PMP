@@ -20,6 +20,7 @@ my $dotGraph = "dotgraph.dot";
 my $test = PMP::spawn->new();
 $test->name("test-pipeline");
 
+
 # where to put the status files
 $test->statusDir($testDir);
 system("mkdir -p $testDir") unless (-d $testDir);
@@ -56,6 +57,7 @@ $test->addStage(
 $test->computeDependenciesFromInputs();
 $test->updateStatus();
 $test->createDotGraph($dotGraph);
+
 
 $test->cleanLockFile();
 $test->initLockFile();

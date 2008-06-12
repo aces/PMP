@@ -937,7 +937,7 @@ sub updateStageStatus {
 
             # Make sure all outputs have been created for a finished stage.
             if( -f $self->getFinishedFile($stageName) ) {
-                foreach my $file (@{ $self->{STAGES}{$stageName}{'inputs'} }) {
+                foreach my $file (@{ $self->{STAGES}{$stageName}{'outputs'} }) {
 	            if (! -e $file) {
                         print "Stage $stageName finished but output $file has not been created.\n";
                         $self->printStage($stageName);

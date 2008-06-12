@@ -1,3 +1,9 @@
+2008-06-12	Jason Lerch	<jason@phenogenomics.ca>
+
+	* added PMPDB - a subclass of PMP which keeps track of status
+	information inside a sqlite database.
+	* added PMPDB pod documentation.
+	
 2008-02-19	Claude Lepage   <claude@bic.mni.mcgill.ca>
 
 	* allow jobs scripts over 100k (sh max command line size)

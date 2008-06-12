@@ -1,0 +1,43 @@
+=head1 NAME
+
+PMPDB - database extension of PMP.
+
+=head1 SYNOPSIS
+
+PMPDB is asublcass of PMP with status and logs tracked in an SQLITE database.
+
+=head1 DESCRIPTION
+
+By inserting PMPDB in between an executor subclass (such as PMP::sge,
+etc.) and PMP proper the status of stages will be tracked inside a
+database rather than through the filesystem. Log messages from the
+stages will also be inserted into the database.
+
+=head1 OVERVIEW
+
+To use PMPDB you have to modify the inheritance tree of an executor
+subclass (gotta love perl - where else could you do this?) and then
+set the database name. For example:
+
+    use PMP::PMP;
+    use PMP::spawn;
+    use PMP::PMPDB;
+    @PMP::spawn::ISA = ("PMP::PMPDB");
+    my $test = PMP::spawn->new();
+    $test->name("test-pipeline");
+    $test->setDBName($databaseName);
+
+From then on the pipeline can be used as any other pipeline. The
+database name can be the same for multiple pipelines within a pipeline
+array - the database itself keeps track of the pipeline name.
+
+The database itself has three tables - pipeline, stage, and
+PMP_info. Of these the stage pipeline is the most imporant - to query
+that status of a particular stage the following SQL command does the
+trick (use sqlite3 to access the database):
+
+    SELECT name, status, status_date FROM stage WHERE name =
+    'stageName' AND pipeline = 'pipelineName';
+
+For PMPDB to work perl's database interface (DBI) along with the
+sqlite drivers have to be installed.
