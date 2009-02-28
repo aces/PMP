@@ -150,6 +150,16 @@ sub resetFromStage {
     }
 }
 
+# reset all stages after a certain point in the dependency tree
+sub resetAfterStage {
+    my $self = shift;
+    my $stageName = shift;
+
+    foreach my $pipe ( @{ $self->{PIPES} } ) {
+	$pipe->resetAfterStage($stageName);
+    }
+}
+
 # reset all stages
 sub resetAll {
     my $self = shift;

@@ -66,6 +66,11 @@ Prints the unfinished stages for each pipeline.
 Takes a stage name as an argument, and resets all stages from that
 one onwards in each pipeline (uses a method of the same name in PMP).
 
+=head2 resetAfterStage
+
+Takes a stage name as an argument, and resets all stages after that
+one onwards in each pipeline (uses a method of the same name in PMP).
+
 =head2 resetAll
 
 Resets all stages in all pipelines.

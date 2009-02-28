@@ -346,6 +346,11 @@ Resets all stages that have failed so that they can be run again.
 Takes a stage name as an argument and resets all stages from that
 stage onwards (including that stage itself).
 
+=head2 resetAfterStage
+
+Takes a stage name as an argument and resets all stages after that
+stage onwards (excluding that stage itself).
+
 =head2 resetAll
 
 Resets all stages in the pipeline.

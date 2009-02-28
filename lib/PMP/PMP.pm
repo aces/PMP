@@ -12,7 +12,7 @@ use MNI::MiscUtilities qw(shellquote timestamp);
 
 # the version number
 
-$PMP::VERSION = '0.7.2';
+$PMP::VERSION = '0.7.3';
 
 # the constructor
 sub new {
@@ -844,7 +844,8 @@ sub subsetToStage {
     }
 }
 
-# resets all stages from a certain point onwards
+# resets all stages from a certain point onwards (including
+# the stage to reset from)
 sub resetFromStage {
     my $self = shift;
     my $stageName = shift;
@@ -885,7 +886,52 @@ sub resetFromStage {
         }
 	$self->resetStage($stage);
     }
-}	    
+}
+
+# resets all stages after a certain point onwards (excluding
+# the stage to reset from)
+sub resetAfterStage {
+    my $self = shift;
+    my $stageName = shift;
+
+    # make sure stages are sorted
+    $self->sortStages() unless $self->{isSorted};
+
+    my @stagesToBeReset;
+    push @stagesToBeReset, $stageName;
+
+    my $numAdded = 1;
+
+    print "Pipe $self->{NAME}: resetting all stages after $stageName\n";
+
+    while ($numAdded) { #keep going until no more stages are added
+	$numAdded = 0;
+	foreach my $stage ( @{ $self->{sortedStages} } ) {
+	    foreach my $prereq ( @stagesToBeReset ) {
+		if (grep(/^$prereq$/, @{ $self->{STAGES}{$stage}{'prereqs'} })) {
+		    unless (grep(/^$stage$/, @stagesToBeReset)) {
+			# a stage in the to be reset list is a prereq for this
+			# stage - reset it too.
+			push @stagesToBeReset, $stage; 
+			$numAdded++;
+		    }
+		}
+	    }
+	}
+    }
+
+    # do the actual resetting
+    foreach my $stage (@stagesToBeReset) {
+        next if( $stage eq $stageName );
+        if( ( -f $self->getLogFile($stage) ) or
+            ( -f $self->getFinishedFile($stage) ) or
+            ( -f $self->getFailedFile($stage) ) or
+            ( -f $self->getRunningFile($stage) ) ) {
+          print "Pipe $self->{NAME}: reset $stage\n";
+        }
+	$self->resetStage($stage);
+    }
+}
 
 # reset all stages
 sub resetAll {
