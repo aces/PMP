@@ -12,6 +12,13 @@ use MNI::MiscUtilities qw(shellquote);
 
 use strict;
 
+# set the submission command
+sub setCommand {
+    my $self = shift;
+    my $Q = shift;
+    $self->{sgeCommand} = $Q;
+}
+
 # set the batch queue
 sub setQueue {
     my $self = shift;
@@ -110,7 +117,8 @@ END
 echo "Start running on: " `uname -s -n -r` " at " `date`
 echo "$cmdstring"
 $cmdstring
-if [ "\$?" == "0" ] 
+if test "\$?" -eq "0"
+#if [ "\$?" == "0" ] ## broken on Ubuntu Hardy and up.
 then 
   touch $finishedFile
 else 
@@ -124,8 +132,11 @@ END
 #open PIPE, ">/tmp/claude/test.sh";
 #print PIPE $sgeSub;
 #close PIPE;
+    if (! (exists $self->{sgeCommand}) ) {
+      $self->{sgeCommand} = "qsub";
+    }
 
-    my $pipeCmd = "|qsub -S /bin/sh";
+    my $pipeCmd = "|$self->{sgeCommand} -S /bin/sh";
     if (exists $self->{sgeOpts}) {
       $pipeCmd .= " $self->{sgeOpts}";
     }
@@ -135,13 +146,13 @@ END
     if( open PIPE, $pipeCmd) {
       print PIPE $sgeSub;
       if (! close PIPE ) {
-        warn "ERROR: could not close qsub pipe $self->{NAME}: $!\n";
+        warn "ERROR: could not close $self->{sgeCommand} pipe $self->{NAME}: $!\n";
         warn "Continuing for now, but this pipe might have gone bad.\n";
       }
     } else {
       `touch $failedFile`;
       unlink $runningFile;
-      warn "ERROR: could not open pipe to qsub: $!\n";
+      warn "ERROR: could not open pipe to $self->{sgeCommand}: $!\n";
     }
 
 }
@@ -233,13 +244,16 @@ END
     print PIPE $sgeSub;
     close PIPE;
 
-    my @args = ( "qsub", "-S", "/bin/sh" );
+    if (! (exists $self->{sgeCommand}) ) {
+      $self->{sgeCommand} = "qsub";
+    }
+    my @args = ( "$self->{sgeCommand}", "-S", "/bin/sh" );
     if( exists $self->{sgeOpts} ) {
       push @args, split( /\s+/, $self->{sgeOpts} );
     }
     push @args, ( $job_script );
     if( system( @args ) ) {
-      warn "ERROR: could not qsub pipe $self->{NAME}: $!\n";
+      warn "ERROR: could not $self->{sgeCommand} pipe $self->{NAME}: $!\n";
       warn "Continuing for now, but this pipe might have gone bad.\n";
       unlink( $job_script );
     }

@@ -12,6 +12,13 @@ use MNI::MiscUtilities qw(shellquote);
 
 use strict;
 
+# set the submission command
+sub setCommand {
+    my $self = shift;
+    my $Q = shift;
+    $self->{pbsCommand} = $Q;
+}
+
 # set the batch queue
 sub setQueue {
     my $self = shift;
@@ -128,21 +135,24 @@ fi
 rm -f $runningFile
 
 END
+    if ( !(exists $self->{pbsCommand}) ) {
+      $self->{pbsCommand} = "qsub";
+    }
 
-    my $pipeCmd = "|qsub ";
+    my $pipeCmd = "| $self->{pbsCommand} ";
     if (exists $self->{pbsOpts}) {
       $pipeCmd .= " $self->{pbsOpts}";
     }
     if( open PIPE, $pipeCmd ) {
       print PIPE $pbsSub;
       if (! close PIPE ) {
-	warn "ERROR: could not close qsub pipe $self->{NAME}: $!\n";
+	warn "ERROR: could not close $self->{pbsCommand} pipe $self->{NAME}: $!\n";
 	warn "Continuing for now, but this pipe might have gone bad.\n";
       }
     } else {
       `touch $failedFile`;
       unlink $runningFile;
-      warn "ERROR: could not open pipe to qsub: $!\n";
+      warn "ERROR: could not open pipe to $self->{pbsCommand}: $!\n";
     }
 	
 }
@@ -240,13 +250,16 @@ END
     print PIPE $pbsSub;
     close PIPE;
 
-    my @args = ( "qsub" );
+    if ( !(exists $self->{pbsCommand}) ) {
+      $self->{pbsCommand} = "qsub";
+    }
+    my @args = ( "$self->{pbsCommand}" );
     if( exists $self->{pbsOpts} ) {
       push @args, split( /\s+/, $self->{pbsOpts} );
     }
     push @args, ( $job_script );
     if( system( @args ) ) {
-      warn "ERROR: could not qsub pipe $self->{NAME}: $!\n";
+      warn "ERROR: could not $self->{pbsCommand} pipe $self->{NAME}: $!\n";
       warn "Continuing for now, but this pipe might have gone bad.\n";
       unlink( $job_script );
     }
