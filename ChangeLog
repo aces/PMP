@@ -1,3 +1,7 @@
+2013-11-08	Claude Lepage   <claude@bic.mni.mcgill.ca>
+        * little fixes in sge.pm and pbs.pm to make subsetToStage work properly
+          (don't execute stage after the To stage)
+	* bumped version to 0.8.1
 
 2012-01-31	Claude Lepage   <claude@bic.mni.mcgill.ca>
 

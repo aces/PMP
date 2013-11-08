@@ -199,7 +199,11 @@ END
     $self->sortStages() unless $self->{isSorted};
 
     foreach my $stage ( @{ $self->{sortedStages} } ) {
-      if (! $self->{STAGES}{$stage}{'finished'} ) {
+
+      # check to make sure that this stage is in the subset of stages to be run
+
+      if ( ( ! $self->{STAGES}{$stage}{'finished'} ) &&
+           ( $self->{runAllStages} == 1 || $self->{stagesSubset}{$stage} ) ) {
 
         # run the stage in question
         $self->declareStageRunning($stage);
