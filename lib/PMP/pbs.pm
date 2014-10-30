@@ -111,9 +111,14 @@ END
 
     $pbsSub .= "cd \$PBS_O_WORKDIR\n";
 
-# now add the environment to the submission command
+    # now add the environment to the submission command.
+    # don't include vars with () in them and remove '\n' inside names (CL).
     foreach my $env ( keys %ENV ) {
-	$pbsSub .= "export ${env}=\"$ENV{$env}\"\n";
+        if( !( ${env} =~ m/\(\)/ ) ) {
+            my $val = $ENV{$env};
+            $val =~ s/\n//g;
+            $pbsSub .= "export ${env}=\"${val}\"\n";
+        }
     }
 
     # define the command string, shellquoting it if so desired
@@ -194,8 +199,13 @@ END
     $pbsSub .= "cd \$PBS_O_WORKDIR\n";
 
     # now add the environment to the submission command
+    # don't include vars with () in them and remove '\n' inside names (CL).
     foreach my $env ( keys %ENV ) {
-	$pbsSub .= "export ${env}=\"$ENV{$env}\"\n";
+        if( !( ${env} =~ m/\(\)/ ) ) {
+            my $val = $ENV{$env};
+            $val =~ s/\n//g;
+            $pbsSub .= "export ${env}=\"${val}\"\n";
+        }
     }
     $pbsSub .= <<END;
 END

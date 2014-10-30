@@ -1,3 +1,8 @@
+2014-10-30	Claude Lepage   <claude@bic.mni.mcgill.ca>
+	* exclude environment variables with () in them (see bash CentOS-6)
+          from sge.pm and pbs.pm. Not sure if this is 100% safe, but it works.
+	* bumped version to 0.8.2
+
 2013-11-08	Claude Lepage   <claude@bic.mni.mcgill.ca>
         * little fixes in sge.pm and pbs.pm to make subsetToStage work properly
           (don't execute stage after the To stage)

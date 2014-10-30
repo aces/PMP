@@ -104,9 +104,14 @@ END
 
     $sgeSub .= "cd \$SGE_O_WORKDIR\n";
 
-# now add the environment to the submission command
+    # now add the environment to the submission command
+    # don't include vars with () in them and remove '\n' inside names (CL).
     foreach my $env ( keys %ENV ) {
-	$sgeSub .= "export ${env}=\"$ENV{$env}\"\n";
+        if( !( ${env} =~ m/\(\)/ ) ) {
+            my $val = $ENV{$env};
+            $val =~ s/\n//g;
+            $sgeSub .= "export ${env}=\"${val}\"\n";
+        }
     }
 
     # define the command string
@@ -187,8 +192,13 @@ END
     $sgeSub .= "cd \$SGE_O_WORKDIR\n";
 
     # now add the environment to the submission command
+    # don't include vars with () in them and remove '\n' inside names (CL).
     foreach my $env ( keys %ENV ) {
-	$sgeSub .= "export ${env}=\"$ENV{$env}\"\n";
+        if( !( ${env} =~ m/\(\)/ ) ) {
+            my $val = $ENV{$env};
+            $val =~ s/\n//g;
+            $sgeSub .= "export ${env}=\"${val}\"\n";
+        }
     }
 
     $sgeSub .= <<END;
