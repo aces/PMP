@@ -12,7 +12,7 @@ use MNI::MiscUtilities qw(shellquote timestamp);
 
 # the version number
 
-$PMP::VERSION = '0.8.2';
+$PMP::VERSION = '0.8.3';
 
 # the constructor
 sub new {
@@ -958,7 +958,7 @@ sub resetRunning {
 #     prereqs
 # Note: execStage() called before this touches the files,
 #       but does not update the internal flags after execution
-#       (unknown for sge and pbs).
+#       (unknown for sge, pbs, and slurm).
 #
 sub updateStageStatus {
     my $self = shift;

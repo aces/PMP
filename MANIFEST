@@ -10,6 +10,8 @@ lib/PMP/PMPDB.pm
 lib/PMP/PMPDB.pod
 lib/PMP/sge.pm
 lib/PMP/sge.pod
+lib/PMP/slurm.pm
+lib/PMP/slurm.pod
 lib/PMP/spawn.pm
 lib/PMP/spawn.pod
 Makefile.PL

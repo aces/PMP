@@ -1,3 +1,7 @@
+2017-09-27      Claude Lepage   <claude@bic.mni.mcgill.ca>
+        * add environment for Slurm Work Scheduler
+        * bumped version to 0.8.3
+
 2014-10-30	Claude Lepage   <claude@bic.mni.mcgill.ca>
 	* exclude environment variables with () in them (see bash CentOS-6)
           from sge.pm and pbs.pm. Not sure if this is 100% safe, but it works.
